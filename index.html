@@ -106,7 +106,19 @@
                             <!-- Z轴网格 (仅3D) -->
                             <div class="form-check form-switch mb-2" id="showZGridsSwitch" style="display: none;">
                                 <input class="form-check-input" type="checkbox" id="showZGrids">
-                                <label class="form-check-label" for="showZGrids">显示Z轴网格</label>
+                                <label class="form-check-label" for="showZGrids">显示 Z 轴网格</label>
+                            </div>
+                            
+                            <!-- 标准坐标轴网格面 (仅3D) -->
+                            <div class="form-check form-switch mb-2" id="showAxisGridSurfaceSwitch" style="display: none;">
+                                <input class="form-check-input" type="checkbox" id="showAxisGridSurface">
+                                <label class="form-check-label" for="showAxisGridSurface">显示标准坐标轴网格面</label>
+                            </div>
+                            
+                            <!-- 子空间网格面 (仅3D) -->
+                            <div class="form-check form-switch mb-2" id="showSubspaceGridSurfaceSwitch" style="display: none;">
+                                <input class="form-check-input" type="checkbox" id="showSubspaceGridSurface">
+                                <label class="form-check-label" for="showSubspaceGridSurface">显示子空间网格面</label>
                             </div>
                             
                             <!-- 动画速度 -->
@@ -178,7 +190,7 @@
                             <!-- 向量将动态添加到这里 -->
                         </div>
                         
-                        <button class="btn btn-outline-danger btn-sm w-100 mt-2" id="clearVectorsBtn">
+                        <button class="btn btn-outline-danger w-100 mt-2" id="clearVectorsBtn">
                             <i class="bi bi-trash"></i> 清除所有向量
                         </button>
                         </div>
@@ -262,7 +274,7 @@
                             <div id="matrixOperationParams">
                                 <!-- 根据选择的运算动态显示参数 -->
                             </div>
-                            <button class="btn btn-success btn-sm w-100 mt-2" id="executeMatrixOpBtn">
+                            <button class="btn btn-success w-100 mt-2" id="executeMatrixOpBtn">
                                 <i class="bi bi-calculator"></i> 计算
                             </button>
                             <div id="matrixOperationResult" class="mt-2" style="display: none;">
@@ -270,7 +282,7 @@
                             </div>
                         </div>
                         
-                        <button class="btn btn-outline-danger btn-sm w-100 mt-3" id="clearMatricesBtn">
+                        <button class="btn btn-outline-danger w-100 mt-3" id="clearMatricesBtn">
                             <i class="bi bi-trash"></i> 清除所有矩阵
                         </button>
                         </div>
@@ -313,7 +325,7 @@
                                 </div>
                                 
                                 <div class="d-flex gap-2 mb-3">
-                                    <button class="btn btn-primary btn-sm flex-grow-1" id="addPresetShapeBtn">
+                                    <button class="btn btn-primary flex-grow-1" id="addPresetShapeBtn">
                                         <i class="bi bi-plus-circle"></i> 添加预置图形
                                     </button>
                                 </div>
@@ -321,6 +333,24 @@
                             
                             <!-- 2D绘制图案区域 (仅2D模式显示) -->
                             <div id="shape2DDrawing">
+                                <!-- 2D预置图形选择 -->
+                                <div class="mb-2">
+                                    <label class="form-label mb-1"><small>预置图形:</small></label>
+                                    <select class="form-select form-select-sm" id="shapePresetSelect2D">
+                                        <option value="">-- 选择预置图形 --</option>
+                                    </select>
+                                </div>
+                                
+                                <!-- 2D图形参数配置区域 -->
+                                <div id="shapeParamsContainer2D" style="display: none;">
+                                    <div class="mb-2">
+                                        <label class="form-label mb-1"><small>参数:</small></label>
+                                        <div id="shapeParams2D">
+                                            <!-- 动态生成的参数输入框 -->
+                                        </div>
+                                    </div>
+                                </div>
+                                
                                 <!-- 图案颜色选择 -->
                                 <div class="row g-2 mb-2 align-items-center">
                                     <div class="col-auto">
@@ -334,8 +364,16 @@
                                     </div>
                                 </div>
                                 
-                                <button class="btn btn-primary w-100 mb-2" id="startDrawShapeBtn">
-                                    <i class="bi bi-pencil"></i> 开始绘制图案
+                                <div class="d-flex gap-2 mb-2">
+                                    <button class="btn btn-primary flex-grow-1" id="addPresetShape2DBtn">
+                                        <i class="bi bi-plus-circle"></i> 添加预置图形
+                                    </button>
+                                </div>
+                                
+                                <hr class="my-2">
+                                
+                                <button class="btn btn-outline-primary w-100 mb-2" id="startDrawShapeBtn">
+                                    <i class="bi bi-pencil"></i> 手动绘制图案
                                 </button>
                             </div>
 
@@ -352,7 +390,7 @@
                                 <div class="text-muted text-center py-2">暂无图案</div>
                             </div>
                             
-                            <button class="btn btn-outline-danger btn-sm w-100 mt-2" id="clearShapesBtn">
+                            <button class="btn btn-outline-danger w-100 mt-2" id="clearShapesBtn">
                                 <i class="bi bi-trash"></i> 清除所有图案
                             </button>
                         </div>
@@ -364,10 +402,10 @@
                             <h5 class="mb-3">空间管理</h5>
                             <!-- 添加子空间区域 -->
                             <div class="mb-3">
-                                <label class="form-label"><small>选择基向量（按住Ctrl多选）</small></label>
-                                <select class="form-select form-select-sm mb-2" id="subspaceVectorSelect" multiple size="10">
+                                <label class="form-label"><small>选择基向量（点击选中/取消）</small></label>
+                                <div class="basis-vector-select" id="subspaceVectorSelect">
                                     <!-- 动态生成的向量选项 -->
-                                </select>
+                                </div>
                                 
                                 <div class="row g-2 mb-2 align-items-center">
                                     <div class="col-auto">
@@ -378,7 +416,7 @@
                                     </div>
                                 </div>
                                 
-                                <button class="btn btn-primary btn-sm w-100" id="addSubspaceBtn">
+                                <button class="btn btn-primary w-100" id="addSubspaceBtn">
                                     <i class="bi bi-plus-circle"></i> 添加子空间
                                 </button>
                                 
@@ -393,7 +431,7 @@
                                 <div class="text-muted text-center py-2">暂无子空间</div>
                             </div>
                             
-                            <button class="btn btn-outline-danger btn-sm w-100 mt-2" id="clearSubspacesBtn">
+                            <button class="btn btn-outline-danger w-100 mt-2" id="clearSubspacesBtn">
                                 <i class="bi bi-trash"></i> 清除所有子空间
                             </button>
                         </div>

@@ -263,6 +263,45 @@ const ShapeManager = {
     },
 
     /**
+     * 获取2D预置图形
+     * @returns {object[]} 预置图形数组
+     */
+    get2DPresets() {
+        return [
+            {
+                name: '圆形',
+                description: '圆形',
+                params: [
+                    { name: 'radius', label: '半径', default: 5, min: 0.1, max: 20, step: 0.1 },
+                    { name: 'x', label: 'X位置', default: 0, min: -20, max: 20, step: 0.5 },
+                    { name: 'y', label: 'Y位置', default: 0, min: -20, max: 20, step: 0.5 },
+                    { name: 'points', label: '点数', default: 80, min: 8, max: 360, step: 1 }
+                ],
+                generator: (params) => this.generateCircle2D(params.radius, params.points, params.x, params.y)
+            }
+        ];
+    },
+
+    /**
+     * 生成2D圆形点
+     * @param {number} radius - 半径
+     * @param {number} numPoints - 圆周上的点数
+     * @param {number} offsetX - X偏移
+     * @param {number} offsetY - Y偏移
+     * @returns {Array} 点数组
+     */
+    generateCircle2D(radius, numPoints, offsetX = 0, offsetY = 0) {
+        const points = [];
+        for (let i = 0; i < numPoints; i++) {
+            const angle = (i * 2 * Math.PI) / numPoints;
+            const x = radius * Math.cos(angle) + offsetX;
+            const y = radius * Math.sin(angle) + offsetY;
+            points.push([x, y]);
+        }
+        return points;
+    },
+
+    /**
      * 获取3D预置图形
      * @returns {object[]} 预置图形数组
      */

@@ -16,6 +16,8 @@ const VisualizationConfig = {
     showAxes: true,
     showLabels: true,
     showZGrids: false, // 3D模式下显示YZ和ZX平面的网格
+    showAxisGridSurface: false, // 3D模式下显示标准坐标轴网格面
+    showSubspaceGridSurface: true, // 3D模式下显示子空间网格面
     coordRange: 10, // 默认2D模式下为10
     animationSpeed: 1,
     
@@ -257,6 +259,13 @@ const Renderer2D = {
                 if (vectorItem) {
                     vectorItem.textContent = VectorOperations.format(this.draggedVector.components);
                 }
+                
+                // 同步更新空间管理卡片中的基向量列表坐标
+                const basisVectorOption = document.querySelector(`.basis-vector-option[data-vector-id="${this.draggedVector.id}"] .vector-coords-text`);
+                if (basisVectorOption) {
+                    const coords = this.draggedVector.components.map(c => c.toFixed(1)).join(', ');
+                    basisVectorOption.textContent = `(${coords})`;
+                }
             } else if (this.isDragging) {
                 // 拖拽平移画布
                 const dx = e.clientX - this.lastMouseX;
@@ -319,6 +328,13 @@ const Renderer2D = {
                 const vectorItem = document.querySelector(`.vector-item[data-id="${this.draggedVector.id}"] .vector-coords`);
                 if (vectorItem) {
                     vectorItem.textContent = VectorOperations.format(this.draggedVector.components);
+                }
+                
+                // 同步更新空间管理卡片中的基向量列表坐标
+                const basisVectorOption = document.querySelector(`.basis-vector-option[data-vector-id="${this.draggedVector.id}"] .vector-coords-text`);
+                if (basisVectorOption) {
+                    const coords = this.draggedVector.components.map(c => c.toFixed(1)).join(', ');
+                    basisVectorOption.textContent = `(${coords})`;
                 }
                 
                 this.draggedVector = null;
@@ -589,6 +605,13 @@ const Renderer2D = {
                 if (vectorItem) {
                     vectorItem.textContent = VectorOperations.format(this.draggedVector.components);
                 }
+                
+                // 同步更新空间管理卡片中的基向量列表坐标
+                const basisVectorOption = document.querySelector(`.basis-vector-option[data-vector-id="${this.draggedVector.id}"] .vector-coords-text`);
+                if (basisVectorOption) {
+                    const coords = this.draggedVector.components.map(c => c.toFixed(1)).join(', ');
+                    basisVectorOption.textContent = `(${coords})`;
+                }
             } else if (this.isDragging) {
                 // 拖拽平移画布
                 const dx = touch.clientX - this.lastMouseX;
@@ -624,6 +647,13 @@ const Renderer2D = {
                 const vectorItem = document.querySelector(`.vector-item[data-id="${this.draggedVector.id}"] .vector-coords`);
                 if (vectorItem) {
                     vectorItem.textContent = VectorOperations.format(this.draggedVector.components);
+                }
+                
+                // 同步更新空间管理卡片中的基向量列表坐标
+                const basisVectorOption = document.querySelector(`.basis-vector-option[data-vector-id="${this.draggedVector.id}"] .vector-coords-text`);
+                if (basisVectorOption) {
+                    const coords = this.draggedVector.components.map(c => c.toFixed(1)).join(', ');
+                    basisVectorOption.textContent = `(${coords})`;
                 }
                 
                 this.draggedVector = null;
@@ -1640,7 +1670,7 @@ const Renderer2D = {
         this.currentShapePoints = [];
         document.getElementById('shapeDrawingHint').style.display = 'block';
         document.getElementById('startDrawShapeBtn').innerHTML = '<i class="bi bi-x-circle"></i> 取消绘制';
-        document.getElementById('startDrawShapeBtn').classList.remove('btn-primary');
+        document.getElementById('startDrawShapeBtn').classList.remove('btn-outline-primary');
         document.getElementById('startDrawShapeBtn').classList.add('btn-warning');
         this.canvas.style.cursor = 'crosshair';
     },
@@ -1679,9 +1709,9 @@ const Renderer2D = {
         this.currentShapePoints = [];
         this.currentShapeClosed = false;
         document.getElementById('shapeDrawingHint').style.display = 'none';
-        document.getElementById('startDrawShapeBtn').innerHTML = '<i class="bi bi-pencil"></i> 开始绘制图案';
+        document.getElementById('startDrawShapeBtn').innerHTML = '<i class="bi bi-pencil"></i> 手动绘制图案';
         document.getElementById('startDrawShapeBtn').classList.remove('btn-warning');
-        document.getElementById('startDrawShapeBtn').classList.add('btn-primary');
+        document.getElementById('startDrawShapeBtn').classList.add('btn-outline-primary');
         this.canvas.style.cursor = 'default';
         this.render();
     },
@@ -1729,7 +1759,8 @@ const Renderer2D = {
             ctx.globalAlpha = 0.3;
             
             if (basisVectors.length === 1) {
-                // 1D子空间：画一条穿过原点的直线，加粗显示
+                // 1D子空间：画一条穿过原点的直线，加粗显示，使用基向量的颜色
+                ctx.strokeStyle = basisVectors[0].color;
                 ctx.lineWidth = 2.5;
                 const v = basisVectors[0].components;
                 const length = Math.sqrt(v[0] * v[0] + v[1] * v[1]);
@@ -1748,6 +1779,8 @@ const Renderer2D = {
                 // 2D子空间：绘制平行四边形网格
                 const v1 = basisVectors[0].components;
                 const v2 = basisVectors[1].components;
+                const color1 = basisVectors[0].color;
+                const color2 = basisVectors[1].color;
                 
                 // 计算需要多少条网格线覆盖整个画布
                 const gridCount = Math.ceil(maxRange / Math.min(
@@ -1755,7 +1788,8 @@ const Renderer2D = {
                     Math.sqrt(v2[0] * v2[0] + v2[1] * v2[1])
                 )) + 5;
                 
-                // 沿v1方向的线（从原点沿v1方向） - 加粗显示
+                // 沿v1方向的线（从原点沿v1方向） - 加粗显示，使用基向量1的颜色
+                ctx.strokeStyle = color1;
                 ctx.lineWidth = 2.5;
                 for (let i = 0; i <= gridCount; i++) {
                     const startX = -i * v1[0];
@@ -1772,7 +1806,8 @@ const Renderer2D = {
                     ctx.stroke();
                 }
                 
-                // 沿v2方向的线（从原点沿v2方向） - 加粗显示
+                // 沿v2方向的线（从原点沿v2方向） - 加粗显示，使用基向量2的颜色
+                ctx.strokeStyle = color2;
                 ctx.lineWidth = 2.5;
                 for (let i = 0; i <= gridCount; i++) {
                     const startX = -i * v2[0];
@@ -1789,7 +1824,8 @@ const Renderer2D = {
                     ctx.stroke();
                 }
                 
-                // 平行于v1的网格线（细线）
+                // 平行于v1的网格线（细线），使用子空间颜色
+                ctx.strokeStyle = subspace.color;
                 ctx.lineWidth = 1;
                 for (let i = -gridCount; i <= gridCount; i++) {
                     if (i === 0) continue; // 跳过已经绘制的中心线
@@ -1976,6 +2012,67 @@ const Renderer3D = {
         // 默认就在XZ平面，不需要旋转
         this.gridHelperZX.visible = config.showGrid && config.showZGrids;
         this.scene.add(this.gridHelperZX);
+        
+        // 创建坐标轴网格面
+        this.createAxisGridSurfaces();
+    },
+
+    /**
+     * 存储坐标轴网格面对象
+     */
+    axisGridSurfaces: [],
+
+    /**
+     * 创建标准坐标轴网格面（半透明平面）
+     */
+    createAxisGridSurfaces() {
+        // 清除旧的网格面
+        this.axisGridSurfaces.forEach(obj => this.scene.remove(obj));
+        this.axisGridSurfaces = [];
+        
+        const config = VisualizationConfig;
+        const size = config.coordRange * 2;
+        
+        // XY平面网格面
+        const xyGeometry = new THREE.PlaneGeometry(size, size);
+        const xyMaterial = new THREE.MeshBasicMaterial({
+            color: 0x888888,
+            transparent: true,
+            opacity: 0.1,
+            side: THREE.DoubleSide
+        });
+        const xyPlane = new THREE.Mesh(xyGeometry, xyMaterial);
+        xyPlane.visible = config.showAxisGridSurface;
+        this.scene.add(xyPlane);
+        this.axisGridSurfaces.push(xyPlane);
+        
+        // YZ平面网格面
+        const yzGeometry = new THREE.PlaneGeometry(size, size);
+        const yzMaterial = new THREE.MeshBasicMaterial({
+            color: 0x888888,
+            transparent: true,
+            opacity: 0.1,
+            side: THREE.DoubleSide
+        });
+        const yzPlane = new THREE.Mesh(yzGeometry, yzMaterial);
+        yzPlane.rotation.y = Math.PI / 2;
+        yzPlane.visible = config.showAxisGridSurface && config.showZGrids;
+        this.scene.add(yzPlane);
+        this.axisGridSurfaces.push(yzPlane);
+        
+        // ZX平面网格面
+        const zxGeometry = new THREE.PlaneGeometry(size, size);
+        const zxMaterial = new THREE.MeshBasicMaterial({
+            color: 0x888888,
+            transparent: true,
+            opacity: 0.1,
+            side: THREE.DoubleSide
+        });
+        const zxPlane = new THREE.Mesh(zxGeometry, zxMaterial);
+        zxPlane.rotation.x = Math.PI / 2;
+        zxPlane.visible = config.showAxisGridSurface && config.showZGrids;
+        this.scene.add(zxPlane);
+        this.axisGridSurfaces.push(zxPlane);
     },
 
     /**
@@ -2025,15 +2122,22 @@ const Renderer3D = {
     },
 
     /**
-     * 创建坐标轴线（使用圆柱体实现加粗效果）
+     * 创建圆柱形线段（通用函数）
+     * @param {THREE.Vector3} start - 起点
+     * @param {THREE.Vector3} end - 终点
+     * @param {number|string} colorHex - 颜色
+     * @param {number} radius - 圆柱半径，默认0.02
+     * @param {number} segments - 圆柱分段数，默认8
+     * @returns {THREE.Mesh|null} 圆柱体网格对象
      */
-    createAxisLine(start, end, colorHex) {
+    createCylinderLine(start, end, colorHex, radius = 0.02, segments = 8) {
         const direction = new THREE.Vector3().subVectors(end, start);
         const length = direction.length();
-        const axisRadius = 0.01; // 坐标轴粗细
+        
+        if (length < 0.001) return null;
         
         // 使用圆柱体绘制粗线
-        const geometry = new THREE.CylinderGeometry(axisRadius, axisRadius, length, 8);
+        const geometry = new THREE.CylinderGeometry(radius, radius, length, segments);
         const material = new THREE.MeshBasicMaterial({ color: colorHex });
         const cylinder = new THREE.Mesh(geometry, material);
         
@@ -2047,9 +2151,25 @@ const Renderer3D = {
         const quaternion = new THREE.Quaternion().setFromUnitVectors(up, dir);
         cylinder.quaternion.copy(quaternion);
         
-        this.axesGroup.add(cylinder);
+        return cylinder;
+    },
+
+    /**
+     * 创建坐标轴线（使用圆柱体实现加粗效果）
+     */
+    createAxisLine(start, end, colorHex) {
+        const axisRadius = 0.01; // 坐标轴粗细
+        
+        // 使用通用函数创建圆柱形线段
+        const cylinder = this.createCylinderLine(start, end, colorHex, axisRadius, 8);
+        if (cylinder) {
+            this.axesGroup.add(cylinder);
+        }
         
         // 添加箭头（加大箭头）
+        const direction = new THREE.Vector3().subVectors(end, start);
+        const length = direction.length();
+        const dir = direction.clone().normalize();
         const arrowHelper = new THREE.ArrowHelper(
             dir,
             start,
@@ -2106,6 +2226,16 @@ const Renderer3D = {
             this.axesGroup.visible = VisualizationConfig.showAxes;
         }
         
+        // 更新坐标轴网格面可见性
+        if (this.axisGridSurfaces && this.axisGridSurfaces.length >= 3) {
+            // XY平面
+            this.axisGridSurfaces[0].visible = VisualizationConfig.showAxisGridSurface;
+            // YZ平面
+            this.axisGridSurfaces[1].visible = VisualizationConfig.showAxisGridSurface && VisualizationConfig.showZGrids;
+            // ZX平面
+            this.axisGridSurfaces[2].visible = VisualizationConfig.showAxisGridSurface && VisualizationConfig.showZGrids;
+        }
+        
         // 绘制所有向量
         const vectors = VectorManager.getVisibleVectors('3D');
         vectors.forEach(v => {
@@ -2133,7 +2263,7 @@ const Renderer3D = {
     },
 
     /**
-     * 绘制向量
+     * 绘制向量（使用圆柱体实现加粗效果）
      */
     drawVector(x, y, z, color, name = '') {
         const origin = new THREE.Vector3(0, 0, 0);
@@ -2143,18 +2273,35 @@ const Renderer3D = {
         
         if (length < 0.001) return;
         
-        // 创建箭头
-        const arrowHelper = new THREE.ArrowHelper(
-            direction,
-            origin,
-            length,
-            color,
-            length * 0.15,
-            length * 0.08
-        );
+        const vectorRadius = 0.03; // 向量线段粗细
+        const arrowLength = Math.min(length * 0.2, 0.5); // 箭头长度
+        const arrowRadius = vectorRadius * 2.5; // 箭头宽度
         
-        this.scene.add(arrowHelper);
-        this.vectorObjects.push(arrowHelper);
+        // 计算圆柱体部分的终点（需要留出箭头的空间）
+        const cylinderEnd = origin.clone().add(direction.clone().multiplyScalar(length - arrowLength));
+        
+        // 创建圆柱形向量线段
+        const cylinder = this.createCylinderLine(origin, cylinderEnd, color, vectorRadius, 8);
+        if (cylinder) {
+            this.scene.add(cylinder);
+            this.vectorObjects.push(cylinder);
+        }
+        
+        // 创建箭头（使用圆锥体）
+        const coneGeometry = new THREE.ConeGeometry(arrowRadius, arrowLength, 12);
+        const coneMaterial = new THREE.MeshBasicMaterial({ color: color });
+        const cone = new THREE.Mesh(coneGeometry, coneMaterial);
+        
+        // 将圆锥放置在向量末端
+        cone.position.copy(end.clone().sub(direction.clone().multiplyScalar(arrowLength / 2)));
+        
+        // 旋转圆锥使其指向向量方向
+        const up = new THREE.Vector3(0, 1, 0);
+        const quaternion = new THREE.Quaternion().setFromUnitVectors(up, direction);
+        cone.quaternion.copy(quaternion);
+        
+        this.scene.add(cone);
+        this.vectorObjects.push(cone);
         
         // 添加标签
         if (name) {
@@ -2584,6 +2731,7 @@ const Renderer3D = {
             if (basisVectors.length === 1) {
                 // 1D子空间：画一条直线
                 const v = basisVectors[0].components;
+                const basisColor = basisVectors[0].color;
                 const len = Math.sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
                 if (len < 1e-10) return;
                 
@@ -2601,67 +2749,198 @@ const Renderer3D = {
                 this.scene.add(line);
                 this.subspaceGrids.push(line);
                 
+                // 绘制基向量作为加粗的坐标轴（使用基向量的颜色）
+                this.drawBasisVectorAxis(v, basisColor, gridExtent);
+                
             } else if (basisVectors.length === 2) {
                 // 2D子空间：画一个平面网格
                 const v1 = basisVectors[0].components;
                 const v2 = basisVectors[1].components;
-                
-                const gridCount = Math.ceil(gridExtent / Math.min(
-                    Math.sqrt(v1[0] * v1[0] + v1[1] * v1[1] + v1[2] * v1[2]),
-                    Math.sqrt(v2[0] * v2[0] + v2[1] * v2[1] + v2[2] * v2[2])
-                )) + 2;
-                
-                const material = new THREE.LineBasicMaterial({ 
-                    color: color, 
-                    opacity: 0.3, 
-                    transparent: true 
-                });
-                
-                // 沿v1方向的线（平行于v2）
-                for (let i = -gridCount; i <= gridCount; i++) {
-                    const points = [
-                        new THREE.Vector3(
-                            i * v1[0] - gridCount * v2[0],
-                            i * v1[1] - gridCount * v2[1],
-                            i * v1[2] - gridCount * v2[2]
-                        ),
-                        new THREE.Vector3(
-                            i * v1[0] + gridCount * v2[0],
-                            i * v1[1] + gridCount * v2[1],
-                            i * v1[2] + gridCount * v2[2]
-                        )
-                    ];
-                    const geometry = new THREE.BufferGeometry().setFromPoints(points);
-                    const line = new THREE.Line(geometry, material);
-                    this.scene.add(line);
-                    this.subspaceGrids.push(line);
-                }
-                
-                // 沿v2方向的线（平行于v1）
-                for (let i = -gridCount; i <= gridCount; i++) {
-                    const points = [
-                        new THREE.Vector3(
-                            i * v2[0] - gridCount * v1[0],
-                            i * v2[1] - gridCount * v1[1],
-                            i * v2[2] - gridCount * v1[2]
-                        ),
-                        new THREE.Vector3(
-                            i * v2[0] + gridCount * v1[0],
-                            i * v2[1] + gridCount * v1[1],
-                            i * v2[2] + gridCount * v1[2]
-                        )
-                    ];
-                    const geometry = new THREE.BufferGeometry().setFromPoints(points);
-                    const line = new THREE.Line(geometry, material);
-                    this.scene.add(line);
-                    this.subspaceGrids.push(line);
-                }
+                const color1 = basisVectors[0].color;
+                const color2 = basisVectors[1].color;
+                this.draw2DSubspaceGrid(v1, v2, subspace.color, gridExtent, false);
+                // 单独绘制基向量轴，使用各自的颜色
+                this.drawBasisVectorAxis(v1, color1, gridExtent);
+                this.drawBasisVectorAxis(v2, color2, gridExtent);
                 
             } else if (basisVectors.length === 3) {
-                // 3D子空间：整个空间，可选绘制一个立方体框架表示
-                // 暂不特别绘制，因为它就是整个空间
+                // 3D子空间：对两两组合的基向量分别生成网格
+                const v1 = basisVectors[0].components;
+                const v2 = basisVectors[1].components;
+                const v3 = basisVectors[2].components;
+                const color1 = basisVectors[0].color;
+                const color2 = basisVectors[1].color;
+                const color3 = basisVectors[2].color;
+                
+                // 三个2D平面网格（两两组合），不绘制轴
+                this.draw2DSubspaceGrid(v1, v2, subspace.color, gridExtent, false);
+                this.draw2DSubspaceGrid(v1, v3, subspace.color, gridExtent, false);
+                this.draw2DSubspaceGrid(v2, v3, subspace.color, gridExtent, false);
+                
+                // 单独绘制三个基向量轴，使用各自的颜色
+                this.drawBasisVectorAxis(v1, color1, gridExtent);
+                this.drawBasisVectorAxis(v2, color2, gridExtent);
+                this.drawBasisVectorAxis(v3, color3, gridExtent);
             }
         });
+    },
+
+    /**
+     * 绘制基向量作为加粗的坐标轴
+     * @param {number[]} v - 基向量分量 [x, y, z]
+     * @param {string} colorHex - 颜色
+     * @param {number} gridExtent - 网格范围
+     */
+    drawBasisVectorAxis(v, colorHex, gridExtent) {
+        const axisRadius = 0.02;
+        const len = Math.sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
+        if (len < 1e-10) return;
+        
+        const t = gridExtent / len;
+        const start = new THREE.Vector3(-v[0] * t, -v[1] * t, -v[2] * t);
+        const end = new THREE.Vector3(v[0] * t, v[1] * t, v[2] * t);
+        const cylinder = this.createCylinderLine(start, end, colorHex, axisRadius, 8);
+        if (cylinder) {
+            this.scene.add(cylinder);
+            this.subspaceGrids.push(cylinder);
+        }
+    },
+
+    /**
+     * 绘制2D子空间网格（由两个基向量定义的平面）
+     * @param {number[]} v1 - 第一个基向量的分量 [x, y, z]
+     * @param {number[]} v2 - 第二个基向量的分量 [x, y, z]
+     * @param {string} colorHex - 颜色
+     * @param {number} gridExtent - 网格范围
+     * @param {boolean} drawAxes - 是否绘制加粗的基向量轴
+     */
+    draw2DSubspaceGrid(v1, v2, colorHex, gridExtent, drawAxes = true) {
+        const color = new THREE.Color(colorHex);
+        
+        const gridCount = Math.ceil(gridExtent / Math.min(
+            Math.sqrt(v1[0] * v1[0] + v1[1] * v1[1] + v1[2] * v1[2]),
+            Math.sqrt(v2[0] * v2[0] + v2[1] * v2[1] + v2[2] * v2[2])
+        )) + 2;
+        
+        const material = new THREE.LineBasicMaterial({ 
+            color: color, 
+            opacity: 0.3, 
+            transparent: true 
+        });
+        
+        // 沿v1方向的线（平行于v2）
+        for (let i = -gridCount; i <= gridCount; i++) {
+            const points = [
+                new THREE.Vector3(
+                    i * v1[0] - gridCount * v2[0],
+                    i * v1[1] - gridCount * v2[1],
+                    i * v1[2] - gridCount * v2[2]
+                ),
+                new THREE.Vector3(
+                    i * v1[0] + gridCount * v2[0],
+                    i * v1[1] + gridCount * v2[1],
+                    i * v1[2] + gridCount * v2[2]
+                )
+            ];
+            const geometry = new THREE.BufferGeometry().setFromPoints(points);
+            const line = new THREE.Line(geometry, material);
+            this.scene.add(line);
+            this.subspaceGrids.push(line);
+        }
+        
+        // 沿v2方向的线（平行于v1）
+        for (let i = -gridCount; i <= gridCount; i++) {
+            const points = [
+                new THREE.Vector3(
+                    i * v2[0] - gridCount * v1[0],
+                    i * v2[1] - gridCount * v1[1],
+                    i * v2[2] - gridCount * v1[2]
+                ),
+                new THREE.Vector3(
+                    i * v2[0] + gridCount * v1[0],
+                    i * v2[1] + gridCount * v1[1],
+                    i * v2[2] + gridCount * v1[2]
+                )
+            ];
+            const geometry = new THREE.BufferGeometry().setFromPoints(points);
+            const line = new THREE.Line(geometry, material);
+            this.scene.add(line);
+            this.subspaceGrids.push(line);
+        }
+        
+        // 绘制基向量作为加粗的坐标轴（延伸到整个网格范围）
+        if (drawAxes) {
+            const axisRadius = 0.02;
+            
+            // 第一个基向量轴
+            const len1 = Math.sqrt(v1[0] * v1[0] + v1[1] * v1[1] + v1[2] * v1[2]);
+            const t1 = len1 > 1e-10 ? gridExtent / len1 : 0;
+            const start1 = new THREE.Vector3(-v1[0] * t1, -v1[1] * t1, -v1[2] * t1);
+            const end1 = new THREE.Vector3(v1[0] * t1, v1[1] * t1, v1[2] * t1);
+            const cylinder1 = this.createCylinderLine(start1, end1, colorHex, axisRadius, 8);
+            if (cylinder1) {
+                this.scene.add(cylinder1);
+                this.subspaceGrids.push(cylinder1);
+            }
+            
+            // 第二个基向量轴
+            const len2 = Math.sqrt(v2[0] * v2[0] + v2[1] * v2[1] + v2[2] * v2[2]);
+            const t2 = len2 > 1e-10 ? gridExtent / len2 : 0;
+            const start2 = new THREE.Vector3(-v2[0] * t2, -v2[1] * t2, -v2[2] * t2);
+            const end2 = new THREE.Vector3(v2[0] * t2, v2[1] * t2, v2[2] * t2);
+            const cylinder2 = this.createCylinderLine(start2, end2, colorHex, axisRadius, 8);
+            if (cylinder2) {
+                this.scene.add(cylinder2);
+                this.subspaceGrids.push(cylinder2);
+            }
+        }
+        
+        // 绘制子空间网格面（半透明平面）
+        if (VisualizationConfig.showSubspaceGridSurface) {
+            // 计算平面的四个角点
+            const corner1 = new THREE.Vector3(
+                -gridCount * v1[0] - gridCount * v2[0],
+                -gridCount * v1[1] - gridCount * v2[1],
+                -gridCount * v1[2] - gridCount * v2[2]
+            );
+            const corner2 = new THREE.Vector3(
+                gridCount * v1[0] - gridCount * v2[0],
+                gridCount * v1[1] - gridCount * v2[1],
+                gridCount * v1[2] - gridCount * v2[2]
+            );
+            const corner3 = new THREE.Vector3(
+                gridCount * v1[0] + gridCount * v2[0],
+                gridCount * v1[1] + gridCount * v2[1],
+                gridCount * v1[2] + gridCount * v2[2]
+            );
+            const corner4 = new THREE.Vector3(
+                -gridCount * v1[0] + gridCount * v2[0],
+                -gridCount * v1[1] + gridCount * v2[1],
+                -gridCount * v1[2] + gridCount * v2[2]
+            );
+            
+            // 创建平面几何体
+            const geometry = new THREE.BufferGeometry();
+            const vertices = new Float32Array([
+                corner1.x, corner1.y, corner1.z,
+                corner2.x, corner2.y, corner2.z,
+                corner3.x, corner3.y, corner3.z,
+                corner1.x, corner1.y, corner1.z,
+                corner3.x, corner3.y, corner3.z,
+                corner4.x, corner4.y, corner4.z
+            ]);
+            geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+            
+            const surfaceMaterial = new THREE.MeshBasicMaterial({
+                color: color,
+                transparent: true,
+                opacity: 0.15,
+                side: THREE.DoubleSide
+            });
+            const surface = new THREE.Mesh(geometry, surfaceMaterial);
+            this.scene.add(surface);
+            this.subspaceGrids.push(surface);
+        }
     }
 };
 

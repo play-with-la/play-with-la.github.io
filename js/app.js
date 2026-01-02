@@ -56,10 +56,14 @@ const App = {
                 // 切换系统设置开关显示
                 document.getElementById('showLabelsSwitch').style.display = 'none';
                 document.getElementById('showZGridsSwitch').style.display = 'block';
+                document.getElementById('showAxisGridSurfaceSwitch').style.display = 'block';
+                document.getElementById('showSubspaceGridSurfaceSwitch').style.display = 'block';
             } else {
                 // 2D模式确保显示正确的开关
                 document.getElementById('showLabelsSwitch').style.display = 'block';
                 document.getElementById('showZGridsSwitch').style.display = 'none';
+                document.getElementById('showAxisGridSurfaceSwitch').style.display = 'none';
+                document.getElementById('showSubspaceGridSurfaceSwitch').style.display = 'none';
             }
         }
         
@@ -180,6 +184,20 @@ const App = {
         // Z轴网格显示
         document.getElementById('showZGrids').addEventListener('change', (e) => {
             VisualizationConfig.showZGrids = e.target.checked;
+            Visualization.render();
+            this.saveSystemSettings();
+        });
+
+        // 标准坐标轴网格面显示
+        document.getElementById('showAxisGridSurface').addEventListener('change', (e) => {
+            VisualizationConfig.showAxisGridSurface = e.target.checked;
+            Visualization.render();
+            this.saveSystemSettings();
+        });
+
+        // 子空间网格面显示
+        document.getElementById('showSubspaceGridSurface').addEventListener('change', (e) => {
+            VisualizationConfig.showSubspaceGridSurface = e.target.checked;
             Visualization.render();
             this.saveSystemSettings();
         });
@@ -429,13 +447,62 @@ const App = {
             document.getElementById('shapeParamsContainer').style.display = 'none';
         });
 
+        // 2D预置图形选择变化时显示参数
+        document.getElementById('shapePresetSelect2D').addEventListener('change', (e) => {
+            const index = parseInt(e.target.value);
+            if (isNaN(index) || index < 0) {
+                document.getElementById('shapeParamsContainer2D').style.display = 'none';
+                return;
+            }
+
+            const presets = ShapeManager.get2DPresets();
+            if (index >= presets.length) return;
+
+            const preset = presets[index];
+            this.updateShapeParams2D(preset);
+        });
+
+        // 添加2D预置图形按钮
+        document.getElementById('addPresetShape2DBtn').addEventListener('click', () => {
+            const select = document.getElementById('shapePresetSelect2D');
+            const index = parseInt(select.value);
+            if (isNaN(index) || index < 0) return;
+
+            const presets = ShapeManager.get2DPresets();
+            if (index >= presets.length) return;
+
+            const preset = presets[index];
+            
+            // 收集参数
+            const params = {};
+            preset.params.forEach(param => {
+                const input = document.getElementById(`shapeParam2D_${param.name}`);
+                params[param.name] = parseFloat(input.value) || param.default;
+            });
+
+            const points = preset.generator(params);
+            const color = document.getElementById('shapeColor').value;
+            const customName = document.getElementById('shapeName').value.trim();
+            const name = customName || preset.name;
+
+            // 添加2D图案（闭合）
+            ShapeManager.addShape(points, color, name, true);
+            this.updateShapeList({ addedId: ShapeManager.shapes[ShapeManager.shapes.length - 1].id });
+            this.updateOperationParams();
+            Visualization.render();
+
+            // 清空输入，切换颜色
+            document.getElementById('shapeName').value = '';
+            document.getElementById('shapeColor').value = ShapeManager.getNextColor();
+            select.selectedIndex = 0;
+            document.getElementById('shapeParamsContainer2D').style.display = 'none';
+        });
+
         // ======== 子空间管理事件绑定 ========
         
         // 添加子空间按钮
         document.getElementById('addSubspaceBtn').addEventListener('click', () => {
-            const select = document.getElementById('subspaceVectorSelect');
-            const selectedOptions = Array.from(select.selectedOptions);
-            const basisVectorIds = selectedOptions.map(opt => parseInt(opt.value));
+            const basisVectorIds = this.getSelectedBasisVectorIds();
             
             if (basisVectorIds.length === 0) {
                 alert('请选择至少一个基向量');
@@ -462,7 +529,7 @@ const App = {
                 document.getElementById('subspaceName').value = '';
                 document.getElementById('subspaceColor').value = SubspaceManager.getNextColor();
                 // 清除选中状态
-                Array.from(select.options).forEach(opt => opt.selected = false);
+                this.clearBasisVectorSelection();
             } else {
                 alert('所选向量线性相关，无法构成基');
             }
@@ -532,6 +599,18 @@ const App = {
                     document.getElementById('showZGrids').checked = parsed.showZGrids;
                 }
                 
+                // 恢复标准坐标轴网格面设置
+                if (parsed.showAxisGridSurface !== undefined) {
+                    VisualizationConfig.showAxisGridSurface = parsed.showAxisGridSurface;
+                    document.getElementById('showAxisGridSurface').checked = parsed.showAxisGridSurface;
+                }
+                
+                // 恢复子空间网格面设置
+                if (parsed.showSubspaceGridSurface !== undefined) {
+                    VisualizationConfig.showSubspaceGridSurface = parsed.showSubspaceGridSurface;
+                    document.getElementById('showSubspaceGridSurface').checked = parsed.showSubspaceGridSurface;
+                }
+                
                 // 恢复动画速度设置
                 if (parsed.animationSpeed !== undefined) {
                     VisualizationConfig.animationSpeed = parsed.animationSpeed;
@@ -556,6 +635,8 @@ const App = {
             showAxes: VisualizationConfig.showAxes,
             showLabels: VisualizationConfig.showLabels,
             showZGrids: VisualizationConfig.showZGrids,
+            showAxisGridSurface: VisualizationConfig.showAxisGridSurface,
+            showSubspaceGridSurface: VisualizationConfig.showSubspaceGridSurface,
             animationSpeed: VisualizationConfig.animationSpeed
         };
         localStorage.setItem('systemSettings', JSON.stringify(settings));
@@ -580,8 +661,12 @@ const App = {
             document.getElementById('showLabelsSwitch').style.display = 'none';
             const showZGridsSwitch = document.getElementById('showZGridsSwitch');
             showZGridsSwitch.style.display = 'block';
+            document.getElementById('showAxisGridSurfaceSwitch').style.display = 'block';
+            document.getElementById('showSubspaceGridSurfaceSwitch').style.display = 'block';
             // 确保开关状态与配置同步
             document.getElementById('showZGrids').checked = VisualizationConfig.showZGrids;
+            document.getElementById('showAxisGridSurface').checked = VisualizationConfig.showAxisGridSurface;
+            document.getElementById('showSubspaceGridSurface').checked = VisualizationConfig.showSubspaceGridSurface;
         } else {
             document.getElementById('vector2DInput').style.display = 'block';
             document.getElementById('vector3DInput').style.display = 'none';
@@ -591,6 +676,8 @@ const App = {
             const showLabelsSwitch = document.getElementById('showLabelsSwitch');
             showLabelsSwitch.style.display = 'block';
             document.getElementById('showZGridsSwitch').style.display = 'none';
+            document.getElementById('showAxisGridSurfaceSwitch').style.display = 'none';
+            document.getElementById('showSubspaceGridSurfaceSwitch').style.display = 'none';
             // 确保开关状态与配置同步
             document.getElementById('showLabels').checked = VisualizationConfig.showLabels;
         }
@@ -599,6 +686,7 @@ const App = {
         this.updateVectorList();
         this.updateMatrixList();
         this.updateMatrixPresets();
+        this.updateMatrixOperationParams();
         
         // 图案不清除，只是根据模式过滤显示
         // 更新图案列表（会自动根据模式过滤）
@@ -1189,11 +1277,11 @@ const App = {
     },
 
     /**
-     * 更新子空间向量选择下拉框
+     * 更新子空间向量选择列表
      */
     updateSubspaceVectorSelect() {
-        const select = document.getElementById('subspaceVectorSelect');
-        if (!select) return;
+        const container = document.getElementById('subspaceVectorSelect');
+        if (!container) return;
         
         // 根据当前模式过滤向量
         const is3DMode = AppState.mode === '3D';
@@ -1206,14 +1294,78 @@ const App = {
         });
         
         if (vectors.length === 0) {
-            select.innerHTML = '<option disabled>暂无向量</option>';
+            container.innerHTML = '<div class="basis-vector-select-empty">暂无向量，请先添加向量</div>';
             return;
         }
         
-        select.innerHTML = vectors.map(v => {
+        // 保存之前选中的向量ID
+        const previouslySelected = Array.from(container.querySelectorAll('.basis-vector-option.selected'))
+            .map(el => parseInt(el.dataset.vectorId));
+        
+        container.innerHTML = vectors.map(v => {
             const coords = v.components.map(c => c.toFixed(1)).join(', ');
-            return `<option value="${v.id}">${v.name} (${coords})</option>`;
+            const isSelected = previouslySelected.includes(v.id);
+            return `
+                <div class="basis-vector-option${isSelected ? ' selected' : ''}" data-vector-id="${v.id}">
+                    <span class="vector-color-dot" style="background-color: ${v.color};"></span>
+                    <span class="vector-label">${v.name}</span>
+                    <span class="vector-coords-text">(${coords})</span>
+                    <span class="check-icon">
+                        ${isSelected ? '<i class="bi bi-check"></i>' : ''}
+                    </span>
+                </div>
+            `;
         }).join('');
+        
+        // 绑定点击事件
+        this.bindBasisVectorSelectEvents();
+    },
+    
+    /**
+     * 绑定基向量选择列表的事件
+     */
+    bindBasisVectorSelectEvents() {
+        const container = document.getElementById('subspaceVectorSelect');
+        if (!container) return;
+        
+        container.querySelectorAll('.basis-vector-option').forEach(option => {
+            option.addEventListener('click', () => {
+                // 切换选中状态
+                option.classList.toggle('selected');
+                
+                // 更新勾选图标
+                const checkIcon = option.querySelector('.check-icon');
+                if (option.classList.contains('selected')) {
+                    checkIcon.innerHTML = '<i class="bi bi-check"></i>';
+                } else {
+                    checkIcon.innerHTML = '';
+                }
+            });
+        });
+    },
+    
+    /**
+     * 获取选中的基向量ID列表
+     */
+    getSelectedBasisVectorIds() {
+        const container = document.getElementById('subspaceVectorSelect');
+        if (!container) return [];
+        
+        return Array.from(container.querySelectorAll('.basis-vector-option.selected'))
+            .map(el => parseInt(el.dataset.vectorId));
+    },
+    
+    /**
+     * 清除基向量选择
+     */
+    clearBasisVectorSelection() {
+        const container = document.getElementById('subspaceVectorSelect');
+        if (!container) return;
+        
+        container.querySelectorAll('.basis-vector-option.selected').forEach(option => {
+            option.classList.remove('selected');
+            option.querySelector('.check-icon').innerHTML = '';
+        });
     },
 
     /**
@@ -1306,6 +1458,7 @@ const App = {
         const presetsContainer = document.getElementById('shape3DPresets');
         const drawingContainer = document.getElementById('shape2DDrawing');
         const select = document.getElementById('shapePresetSelect');
+        const select2D = document.getElementById('shapePresetSelect2D');
         
         if (AppState.mode === '3D') {
             // 显示3D预置图形，隐藏2D绘制
@@ -1321,6 +1474,14 @@ const App = {
             // 隐藏3D预置图形，显示2D绘制
             presetsContainer.style.display = 'none';
             drawingContainer.style.display = 'block';
+            
+            // 填充2D预置图形下拉框
+            const presets2D = ShapeManager.get2DPresets();
+            select2D.innerHTML = '<option value="">-- 选择预置图形 --</option>' +
+                presets2D.map((p, i) => `<option value="${i}">${p.description}</option>`).join('');
+            
+            // 隐藏2D参数容器
+            document.getElementById('shapeParamsContainer2D').style.display = 'none';
         }
     },
 
@@ -1350,6 +1511,44 @@ const App = {
                         <input type="number" 
                                class="form-control form-control-sm" 
                                id="shapeParam_${param.name}" 
+                               value="${param.default}"
+                               min="${param.min}"
+                               max="${param.max}"
+                               step="${param.step}">
+                    </div>
+                </div>
+            `;
+        });
+        
+        container.innerHTML = html;
+    },
+
+    /**
+     * 更新2D图形参数输入UI
+     */
+    updateShapeParams2D(preset) {
+        const container = document.getElementById('shapeParams2D');
+        const paramsContainer = document.getElementById('shapeParamsContainer2D');
+        
+        if (!preset || !preset.params || preset.params.length === 0) {
+            paramsContainer.style.display = 'none';
+            return;
+        }
+
+        paramsContainer.style.display = 'block';
+        
+        // 生成参数输入框
+        let html = '';
+        preset.params.forEach(param => {
+            html += `
+                <div class="row g-2 mb-2 align-items-center">
+                    <div class="col-4">
+                        <label class="form-label mb-0"><small>${param.label}:</small></label>
+                    </div>
+                    <div class="col-8">
+                        <input type="number" 
+                               class="form-control form-control-sm" 
+                               id="shapeParam2D_${param.name}" 
                                value="${param.default}"
                                min="${param.min}"
                                max="${param.max}"
@@ -1716,7 +1915,7 @@ const App = {
     updateMatrixOperationParams() {
         const operation = document.getElementById('matrixOperationSelect').value;
         const container = document.getElementById('matrixOperationParams');
-        const matrices = MatrixManager.getAllMatrices();
+        const matrices = MatrixManager.getAllMatrices(AppState.mode);
         
         if (!operation) {
             container.innerHTML = '';
