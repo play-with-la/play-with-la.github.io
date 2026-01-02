@@ -115,113 +115,6 @@
     border-color: var(--primary-color);
 }
 
-.theme-dark .card {
-    background-color: var(--bg-card);
-    border-color: var(--border-color);
-}
-
-.theme-dark .card-header {
-    background-color: var(--bg-secondary);
-    border-color: var(--border-color);
-    color: var(--text-primary);
-}
-
-/* ============================================
-   卡片主题色 - 亮色主题
-   ============================================ */
-/* 系统设置 - 灰蓝色 */
-.card-settings {
-    border-color: #94a3b8;
-}
-.card-settings .card-header {
-    background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
-    border-bottom-color: #94a3b8;
-}
-
-/* 向量管理 - 淡红色 */
-.card-vectors {
-    border-color: #f87171;
-}
-.card-vectors .card-header {
-    background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
-    border-bottom-color: #f87171;
-}
-
-/* 矩阵管理 - 淡紫色 */
-.card-matrices {
-    border-color: #a78bfa;
-}
-.card-matrices .card-header {
-    background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%);
-    border-bottom-color: #a78bfa;
-}
-
-/* 图案管理 - 淡绿色 */
-.card-shapes {
-    border-color: #4ade80;
-}
-.card-shapes .card-header {
-    background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
-    border-bottom-color: #4ade80;
-}
-
-/* 功能函数 - 淡橙色 */
-.card-operations {
-    border-color: #fb923c;
-}
-.card-operations .card-header {
-    background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%);
-    border-bottom-color: #fb923c;
-}
-
-/* ============================================
-   卡片主题色 - 暗色主题
-   ============================================ */
-/* 系统设置 - 灰蓝色 */
-.theme-dark .card-settings {
-    border-color: #475569;
-}
-.theme-dark .card-settings .card-header {
-    background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
-    border-bottom-color: #475569;
-}
-
-/* 向量管理 - 暗红色 */
-.theme-dark .card-vectors {
-    border-color: #991b1b;
-}
-.theme-dark .card-vectors .card-header {
-    background: linear-gradient(135deg, #2a1515 0%, #3b1c1c 100%);
-    border-bottom-color: #991b1b;
-}
-
-/* 矩阵管理 - 暗紫色 */
-.theme-dark .card-matrices {
-    border-color: #6d28d9;
-}
-.theme-dark .card-matrices .card-header {
-    background: linear-gradient(135deg, #1e1a2e 0%, #2d2248 100%);
-    border-bottom-color: #6d28d9;
-}
-
-/* 图案管理 - 暗绿色 */
-.theme-dark .card-shapes {
-    border-color: #16a34a;
-}
-.theme-dark .card-shapes .card-header {
-    background: linear-gradient(135deg, #14271a 0%, #1a3a24 100%);
-    border-bottom-color: #16a34a;
-}
-
-/* 功能函数 - 暗橙色 */
-.theme-dark .card-operations {
-    border-color: #c2410c;
-}
-.theme-dark .card-operations .card-header {
-    background: linear-gradient(135deg, #27180f 0%, #3a2315 100%);
-    border-bottom-color: #c2410c;
-}
-
 .theme-dark .form-control,
 .theme-dark .form-select {
     background-color: var(--bg-secondary);
@@ -242,10 +135,6 @@
 
 .theme-dark .main-display {
     background-color: var(--bg-canvas);
-}
-
-.theme-dark .card-body {
-    color: var(--text-primary);
 }
 
 .theme-dark .form-label {
@@ -563,42 +452,6 @@ body {
     .github-link i {
         font-size: 1.1rem;
     }
-}
-
-/* ============================================
-   卡片样式
-   ============================================ */
-.card {
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    box-shadow: var(--shadow-sm);
-    transition: all 0.3s ease;
-}
-
-.card-header {
-    background-color: var(--bg-secondary);
-    border-bottom: 1px solid var(--border-color);
-    font-weight: 500;
-    padding: 0.75rem 1rem;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.card-header i {
-    color: var(--primary-color);
-}
-
-.card-header .collapse-icon {
-    transition: transform 0.3s ease;
-}
-
-.card-header[aria-expanded="true"] .collapse-icon {
-    transform: rotate(-90deg);
-}
-
-.card-body {
-    padding: 1rem;
 }
 
 /* ============================================
@@ -1235,23 +1088,6 @@ input[type="number"] {
         opacity: 1;
         transform: translateY(0);
     }
-}
-
-.fade-in {
-    animation: fadeIn 0.3s ease;
-}
-
-@keyframes pulse {
-    0%, 100% {
-        opacity: 1;
-    }
-    50% {
-        opacity: 0.5;
-    }
-}
-
-.pulse {
-    animation: pulse 1.5s ease infinite;
 }
 
 /* ============================================

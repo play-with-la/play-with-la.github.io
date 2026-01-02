@@ -113,14 +113,12 @@ const Operations = {
             }
         });
         let html = `<small class="text-muted">${config.description}</small>`;
-        let hasError = false;
 
         // 需要选择矩阵的操作（先显示矩阵选择）
         if (config.needsOneMatrix) {
             const matrices = MatrixManager.getAllMatrices(mode);
             if (matrices.length === 0) {
                 html += `<div class="alert alert-warning mt-2 py-2">请先添加矩阵</div>`;
-                hasError = true;
             } else {
                 const matrixOptions = matrices.map(m => 
                     `<option value="${m.id}">${m.name} (${m.matrix.length}×${m.matrix.length})</option>`
@@ -142,7 +140,6 @@ const Operations = {
         if (config.needsTwoVectors || config.needsOneVector) {
             if (vectors.length === 0) {
                 html += `<div class="alert alert-warning mt-2 py-2">请先添加向量</div>`;
-                hasError = true;
             } else {
                 const vectorOptions = vectors.map(v => 
                     `<option value="${v.id}">${v.name}</option>`
@@ -192,7 +189,6 @@ const Operations = {
             });
             if (shapes.length === 0) {
                 html += `<div class="alert alert-warning mt-2 py-2">请先添加图案</div>`;
-                hasError = true;
             } else {
                 const shapeOptions = shapes.map(s => 
                     `<option value="${s.id}">${s.name}</option>`
@@ -230,7 +226,6 @@ const Operations = {
             
             if (!hasVectorOrShape) {
                 html += `<div class="alert alert-warning mt-2 py-2">请先添加向量或图案</div>`;
-                hasError = true;
             } else {
                 let selectOptions = '<option value="" disabled selected>-- 选择向量或图案 --</option>';
                 

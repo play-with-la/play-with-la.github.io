@@ -261,21 +261,6 @@ const MatrixManager = {
     },
 
     /**
-     * 从预置添加矩阵
-     * @param {string} mode - '2D' 或 '3D'
-     * @param {number} presetIndex - 预置索引
-     * @returns {object} 添加的矩阵对象
-     */
-    addFromPreset(mode, presetIndex) {
-        const presets = this.getPresets(mode);
-        if (presetIndex >= 0 && presetIndex < presets.length) {
-            const preset = presets[presetIndex];
-            return this.addMatrix(preset.matrix, preset.name, preset.description);
-        }
-        return null;
-    },
-
-    /**
      * 格式化矩阵显示
      * @param {number[][]} matrix - 矩阵
      * @returns {string} 格式化的字符串
@@ -299,28 +284,6 @@ const MatrixManager = {
     // 兼容旧代码的方法
     matrix2D: [[1, 0], [0, 1]],
     matrix3D: [[1, 0, 0], [0, 1, 0], [0, 0, 1]],
-
-    /**
-     * 设置2D矩阵
-     * @param {number[][]} matrix - 2x2矩阵
-     */
-    setMatrix2D(matrix) {
-        if (matrix.length !== 2 || matrix[0].length !== 2 || matrix[1].length !== 2) {
-            throw new Error('2D矩阵必须是2x2');
-        }
-        this.matrix2D = matrix.map(row => [...row]);
-    },
-
-    /**
-     * 设置3D矩阵
-     * @param {number[][]} matrix - 3x3矩阵
-     */
-    setMatrix3D(matrix) {
-        if (matrix.length !== 3 || matrix[0].length !== 3 || matrix[1].length !== 3 || matrix[2].length !== 3) {
-            throw new Error('3D矩阵必须是3x3');
-        }
-        this.matrix3D = matrix.map(row => [...row]);
-    },
 
     /**
      * 获取当前矩阵（根据模式）

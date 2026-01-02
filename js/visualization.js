@@ -854,7 +854,6 @@ const Renderer2D = {
         const anim = this.animation;
         const progress = this.easeInOutCubic(anim.progress);
         
-        const origin = this.worldToScreen(0, 0);
         const v1End = this.worldToScreen(anim.v1[0], anim.v1[1]);
         const v2End = this.worldToScreen(anim.v2[0], anim.v2[1]);
         const resultEnd = this.worldToScreen(anim.result[0], anim.result[1]);
@@ -949,7 +948,6 @@ const Renderer2D = {
 
         // 部分段
         let arrowPos = startScreen;
-        let arrowDir = { x: 1, y: 0 };
         if (fullSegments < totalSegments) {
             const a = pts[fullSegments];
             const b = pts[fullSegments + 1];
@@ -960,12 +958,9 @@ const Renderer2D = {
             const pScreen = this.worldToScreen(px, py);
             ctx.lineTo(pScreen.x, pScreen.y);
             arrowPos = pScreen;
-            arrowDir = this.normalizeDir(dx, dy);
         } else {
             const last = pts[pts.length - 1];
-            const prev = pts[pts.length - 2];
             arrowPos = this.worldToScreen(last[0], last[1]);
-            arrowDir = this.normalizeDir(last[0] - prev[0], last[1] - prev[1]);
         }
 
         ctx.stroke();
@@ -2350,11 +2345,6 @@ const Renderer3D = {
         // 尝试创建半透明的面（使用ConvexGeometry）
         if (points.length >= 4) {
             try {
-                // 使用ConvexGeometry创建凸包
-                const geometry = new THREE.BufferGeometry();
-                const positions = [];
-                const indices = [];
-                
                 // 对于大量点，创建凸包网格
                 if (points.length > 20 && !isCoplanar) {
                     // 球体、椭球等密集点云，使用凸包（仅当非共面时）

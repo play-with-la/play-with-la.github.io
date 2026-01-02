@@ -6,7 +6,7 @@
 
 // ES Module: 引用全局对象
 const { VectorManager, VectorOperations, MatrixManager, ShapeManager, SubspaceManager,
-        VisualizationConfig, Visualization, Renderer2D, executeOperation } = window;
+        VisualizationConfig, Visualization, Renderer2D } = window;
 
 // 应用状态
 const AppState = {
@@ -119,7 +119,7 @@ const App = {
      */
     loadSavedData() {
         // 尝试加载向量
-        const hasVectors = VectorManager.load();
+        VectorManager.load();
         // 尝试加载矩阵
         const hasMatrices = MatrixManager.load();
         // 尝试加载图案

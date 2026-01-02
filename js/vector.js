@@ -288,23 +288,6 @@ const VectorOperations = {
     },
 
     /**
-     * 计算两向量夹角 (弧度)
-     * @param {number[]} v1 - 第一个向量
-     * @param {number[]} v2 - 第二个向量
-     * @returns {number} 夹角（弧度）
-     */
-    angle(v1, v2) {
-        const dotProduct = this.dot(v1, v2);
-        const mag1 = this.magnitude(v1);
-        const mag2 = this.magnitude(v2);
-        if (mag1 === 0 || mag2 === 0) {
-            throw new Error('零向量无法计算夹角');
-        }
-        const cosAngle = Math.max(-1, Math.min(1, dotProduct / (mag1 * mag2)));
-        return Math.acos(cosAngle);
-    },
-
-    /**
      * 线性组合
      * @param {number[][]} vectors - 向量数组
      * @param {number[]} scalars - 标量数组

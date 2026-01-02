@@ -43,7 +43,7 @@
                         </button>
                         <button class="nav-link" id="v-pills-operations-tab" data-bs-toggle="pill" data-bs-target="#v-pills-operations" type="button" role="tab">
                             <i class="bi bi-lightning"></i>
-                            <span>功能函数</span>
+                            <span>功能演示</span>
                         </button>
 
                         <!-- GitHub链接 -->
@@ -437,25 +437,12 @@
                         </div>
                     </div>
                     
-                    <!-- 标签页6: 功能函数 -->
+                    <!-- 标签页6: 功能演示 -->
                     <div class="tab-pane fade" id="v-pills-operations" role="tabpanel">
                         <div class="tab-pane-content">
-                            <h5 class="mb-3">功能函数</h5>
+                            <h5 class="mb-3">功能演示</h5>
                         <select class="form-select mb-2" id="operationSelect">
-                            <option value="" disabled selected>-- 选择操作 --</option>
-                            <optgroup label="向量运算">
-                                <option value="vector_add">向量加法</option>
-                                <option value="vector_subtract">向量减法</option>
-                                <option value="vector_scale">标量乘法</option>
-                                <option value="vector_normalize">单位化</option>
-                                <option value="vector_projection">向量投影</option>
-                                <option value="vector_cross">叉积 (3D)</option>
-                            </optgroup>
-                            <optgroup label="矩阵变换">
-                                <option value="matrix_transform_vector">映射向量</option>
-                                <option value="matrix_transform_shape">映射图案</option>
-                                <option value="matrix_dynamics_trace">动力学轨迹</option>
-                            </optgroup>
+                            <!-- 操作选项由JavaScript动态生成 -->
                         </select>
                         
                         <!-- 操作参数区域 -->

@@ -217,17 +217,6 @@ const SubspaceManager = {
     },
 
     /**
-     * 检查子空间是否有效（所有基向量都存在且线性无关）
-     * @param {object} subspace - 子空间对象
-     * @returns {boolean} 是否有效
-     */
-    isValid(subspace) {
-        const vectors = this.getBasisVectors(subspace);
-        return vectors.length === subspace.basisVectorIds.length && 
-               this.areLinearlyIndependent(vectors);
-    },
-
-    /**
      * 清除所有子空间
      */
     clearAll() {
