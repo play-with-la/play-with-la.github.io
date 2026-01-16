@@ -69,13 +69,14 @@ const App = {
         
         // 初始化可视化系统（使用恢复的模式）
         Visualization.init();
-        if (savedMode) {
-            Visualization.setMode(savedMode);
-        }
         
-        // 应用保存的主题到可视化
+        // 应用保存的主题到可视化（在setMode之前）
         if (savedTheme) {
             VisualizationConfig.updateTheme(savedTheme);
+        }
+        
+        if (savedMode) {
+            Visualization.setMode(savedMode);
         }
         
         // 绑定事件监听器
