@@ -39,9 +39,11 @@ const ShapeManager = {
      * @param {string} color - 颜色
      * @param {string} name - 名称
      * @param {boolean} closed - 是否闭合
+     * @param {string} shapeType - 可选的图形类型（如 'line'）
+     * @param {object} params - 可选的创建参数
      * @returns {object} 添加的图案对象
      */
-    addShape(points, color = null, name = null, closed = false) {
+    addShape(points, color = null, name = null, closed = false, shapeType = null, params = null) {
         const id = this.nextId++;
         
         // 将点数组转换为列向量矩阵格式
@@ -58,7 +60,9 @@ const ShapeManager = {
             color: color || this.getNextColor(),
             name: name || this.getNextName(),
             visible: true,
-            closed: closed  // 是否闭合
+            closed: closed,  // 是否闭合
+            shapeType: shapeType,  // 图形类型
+            params: params  // 创建参数
         };
         
         this.shapes.push(shape);
@@ -269,6 +273,17 @@ const ShapeManager = {
     get2DPresets() {
         return [
             {
+                name: '直线',
+                description: '直线',
+                params: [
+                    { name: 'x1', label: '点一 X', default: -2, min: -20, max: 20, step: 0.5 },
+                    { name: 'y1', label: '点一 Y', default: -1, min: -20, max: 20, step: 0.5 },
+                    { name: 'x2', label: '点二 X', default: 2, min: -20, max: 20, step: 0.5 },
+                    { name: 'y2', label: '点二 Y', default: 1, min: -20, max: 20, step: 0.5 }
+                ],
+                generator: (params) => this.generateLine2D(params.x1, params.y1, params.x2, params.y2)
+            },
+            {
                 name: '圆形',
                 description: '圆形',
                 params: [
@@ -280,6 +295,19 @@ const ShapeManager = {
                 generator: (params) => this.generateCircle2D(params.radius, params.points, params.x, params.y)
             }
         ];
+    },
+
+    /**
+     * 生成2D直线点（返回两个控制点）
+     * @param {number} x1 - 第一个点X坐标
+     * @param {number} y1 - 第一个点Y坐标
+     * @param {number} x2 - 第二个点X坐标
+     * @param {number} y2 - 第二个点Y坐标
+     * @returns {Array} 点数组
+     */
+    generateLine2D(x1, y1, x2, y2) {
+        // 返回两个控制点，渲染器会根据 shapeType='line' 进行无限延伸绘制
+        return [[x1, y1], [x2, y2]];
     },
 
     /**

@@ -274,10 +274,13 @@ body {
    ============================================ */
 .vertical-tabs-nav {
     width: 35px;
+    min-width: 35px;
+    flex-shrink: 0;
     background-color: var(--bg-secondary);
     border-right: 1px solid var(--border-color);
     display: flex;
     flex-direction: column;
+    overflow-x: hidden;
     overflow-y: auto;
 }
 
@@ -403,6 +406,7 @@ body {
 @media (max-width: 992px) {
     .vertical-tabs-nav {
         width: 70px;
+        min-width: 70px;
     }
     
     .vertical-tabs-nav .nav-link {
@@ -422,6 +426,7 @@ body {
 @media (max-width: 768px) {
     .vertical-tabs-nav {
         width: 60px;
+        min-width: 60px;
     }
     
     .vertical-tabs-nav .app-title {

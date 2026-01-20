@@ -17,7 +17,9 @@ const AppState = {
         isEditing: false,
         editingShapeId: null,
         originalParams: null
-    }
+    },
+    // 直线命名计数器
+    lineCounter: 1
 };
 
 // 应用初始化
@@ -484,10 +486,27 @@ const App = {
             const points = preset.generator(params);
             const color = document.getElementById('shapeColor').value;
             const customName = document.getElementById('shapeName').value.trim();
-            const name = customName || preset.name;
+            
+            // 确定shapeType（直线特殊处理）
+            const typeMap = {
+                '直线': 'line',
+                '圆形': 'circle'
+            };
+            const shapeType = typeMap[preset.name] || null;
+            const isClosed = preset.name !== '直线';  // 直线不闭合
+            
+            // 确定名称（直线使用递增计数命名）
+            let name;
+            if (customName) {
+                name = customName;
+            } else if (preset.name === '直线') {
+                name = `Line${AppState.lineCounter++}`;
+            } else {
+                name = preset.name;
+            }
 
-            // 添加2D图案（闭合）
-            ShapeManager.addShape(points, color, name, true);
+            // 添加2D图案
+            ShapeManager.addShape(points, color, name, isClosed, shapeType, params);
             this.updateShapeList({ addedId: ShapeManager.shapes[ShapeManager.shapes.length - 1].id });
             this.updateOperationParams();
             Visualization.render();
@@ -876,6 +895,9 @@ const App = {
                 this.editItemName(id, nameSpan, 'vector');
             });
         });
+        
+        // 刷新直线向量选择下拉框（如果存在）
+        this.refreshLineVectorDropdowns();
     },
 
     /**
@@ -1130,6 +1152,11 @@ const App = {
         
         paramsContainer.innerHTML = Operations.generateParamsUI(operation, AppState.mode);
         
+        // 触发 MathJax 渲染参数UI中的数学公式
+        if (window.MathJax) {
+            MathJax.typesetPromise([paramsContainer]).catch(err => console.log('MathJax error:', err));
+        }
+        
         // 恢复选择状态（如果选项仍然存在）
         Object.entries(savedSelections).forEach(([id, value]) => {
             if (value) {
@@ -1187,8 +1214,8 @@ const App = {
      */
     rebuildShapeList(container, shapes, addedId) {
         container.innerHTML = shapes.map(s => {
-            // 只有3D图案且有shapeType和params时才显示编辑按钮
-            const canEdit = s.is3D && s.shapeType && s.params;
+            // 只有3D预置图形（有shapeType且不是plane类型）才显示编辑按钮
+            const canEdit = s.is3D && s.shapeType && s.shapeType !== 'plane' && s.params;
             return `
             <div class="shape-item${addedId === s.id ? ' adding' : ''}" data-id="${s.id}">
                 <div class="shape-info">
@@ -1540,26 +1567,131 @@ const App = {
         
         // 生成参数输入框
         let html = '';
-        preset.params.forEach(param => {
+        
+        // 直线特殊处理：添加向量选择器
+        if (preset.name === '直线') {
+            const vectors = VectorManager.getVisibleVectors('2D');
+            
+            // 向量选择器（点一）
             html += `
-                <div class="row g-2 mb-2 align-items-center">
-                    <div class="col-4">
-                        <label class="form-label mb-0"><small>${param.label}:</small></label>
-                    </div>
-                    <div class="col-8">
-                        <input type="number" 
-                               class="form-control form-control-sm" 
-                               id="shapeParam2D_${param.name}" 
-                               value="${param.default}"
-                               min="${param.min}"
-                               max="${param.max}"
-                               step="${param.step}">
+                <div class="mb-2">
+                    <label class="form-label mb-1"><small>点一 (从向量或手动输入):</small></label>
+                    <select class="form-select form-select-sm mb-1" id="linePoint1Vector" onchange="App.onLineVectorSelect(1)">
+                        <option value="">-- 手动输入坐标 --</option>
+                        ${vectors.map(v => `<option value="${v.id}">${v.name}</option>`).join('')}
+                    </select>
+                    <div class="row g-1" id="linePoint1Manual">
+                        <div class="col-6">
+                            <input type="number" class="form-control form-control-sm" 
+                                   id="shapeParam2D_x1" value="-2" step="0.5" placeholder="X">
+                        </div>
+                        <div class="col-6">
+                            <input type="number" class="form-control form-control-sm" 
+                                   id="shapeParam2D_y1" value="-1" step="0.5" placeholder="Y">
+                        </div>
                     </div>
                 </div>
             `;
-        });
+            
+            // 向量选择器（点二）
+            html += `
+                <div class="mb-2">
+                    <label class="form-label mb-1"><small>点二 (从向量或手动输入):</small></label>
+                    <select class="form-select form-select-sm mb-1" id="linePoint2Vector" onchange="App.onLineVectorSelect(2)">
+                        <option value="">-- 手动输入坐标 --</option>
+                        ${vectors.map(v => `<option value="${v.id}">${v.name}</option>`).join('')}
+                    </select>
+                    <div class="row g-1" id="linePoint2Manual">
+                        <div class="col-6">
+                            <input type="number" class="form-control form-control-sm" 
+                                   id="shapeParam2D_x2" value="2" step="0.5" placeholder="X">
+                        </div>
+                        <div class="col-6">
+                            <input type="number" class="form-control form-control-sm" 
+                                   id="shapeParam2D_y2" value="1" step="0.5" placeholder="Y">
+                        </div>
+                    </div>
+                </div>
+            `;
+        } else {
+            // 其他图形使用普通参数输入
+            preset.params.forEach(param => {
+                html += `
+                    <div class="row g-2 mb-2 align-items-center">
+                        <div class="col-4">
+                            <label class="form-label mb-0"><small>${param.label}:</small></label>
+                        </div>
+                        <div class="col-8">
+                            <input type="number" 
+                                   class="form-control form-control-sm" 
+                                   id="shapeParam2D_${param.name}" 
+                                   value="${param.default}"
+                                   min="${param.min}"
+                                   max="${param.max}"
+                                   step="${param.step}">
+                        </div>
+                    </div>
+                `;
+            });
+        }
         
         container.innerHTML = html;
+    },
+
+    /**
+     * 直线向量选择回调
+     * @param {number} pointNum - 点编号 (1 或 2)
+     */
+    onLineVectorSelect(pointNum) {
+        const selectId = `linePoint${pointNum}Vector`;
+        const select = document.getElementById(selectId);
+        const vectorId = select.value;
+        
+        if (vectorId) {
+            const vector = VectorManager.getVector(parseInt(vectorId));
+            if (vector && vector.components.length >= 2) {
+                // 坐标值保留3位小数
+                const x = parseFloat(vector.components[0].toFixed(3));
+                const y = parseFloat(vector.components[1].toFixed(3));
+                document.getElementById(`shapeParam2D_x${pointNum}`).value = x;
+                document.getElementById(`shapeParam2D_y${pointNum}`).value = y;
+            }
+        }
+    },
+
+    /**
+     * 刷新直线向量选择下拉框
+     * 当向量列表更新时调用，保持下拉框与向量列表同步
+     */
+    refreshLineVectorDropdowns() {
+        const select1 = document.getElementById('linePoint1Vector');
+        const select2 = document.getElementById('linePoint2Vector');
+        
+        // 如果下拉框不存在（当前不是直线预置），直接返回
+        if (!select1 || !select2) return;
+        
+        // 保存当前选中的值
+        const selectedValue1 = select1.value;
+        const selectedValue2 = select2.value;
+        
+        // 获取当前2D向量列表
+        const vectors = VectorManager.getVisibleVectors('2D');
+        
+        // 生成新的选项HTML
+        const optionsHtml = `<option value="">-- 手动输入坐标 --</option>` +
+            vectors.map(v => `<option value="${v.id}">${v.name}</option>`).join('');
+        
+        // 更新下拉框选项
+        select1.innerHTML = optionsHtml;
+        select2.innerHTML = optionsHtml;
+        
+        // 恢复之前选中的值（如果向量仍存在）
+        if (selectedValue1 && vectors.some(v => v.id === parseInt(selectedValue1))) {
+            select1.value = selectedValue1;
+        }
+        if (selectedValue2 && vectors.some(v => v.id === parseInt(selectedValue2))) {
+            select2.value = selectedValue2;
+        }
     },
 
     /**
