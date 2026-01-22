@@ -140,59 +140,60 @@
                     <div class="tab-pane fade show active" id="v-pills-vectors" role="tabpanel">
                         <div class="tab-pane-content">
                             <h5 class="mb-3">向量管理</h5>
-                        <div id="vectorInputContainer">
-                            <!-- 2D向量输入 -->
-                            <div id="vector2DInput">
-                                <div class="row g-2 mb-2">
-                                    <div class="col">
-                                        <input type="number" class="form-control" id="vectorX" placeholder="x" value="1">
-                                    </div>
-                                    <div class="col">
-                                        <input type="number" class="form-control" id="vectorY" placeholder="y" value="1">
+                            <label class="form-label mb-1"><small>输入坐标:</small></label>
+                            <div id="vectorInputContainer">
+                                <!-- 2D向量输入 -->
+                                <div id="vector2DInput">
+                                    <div class="row g-2 mb-2">
+                                        <div class="col">
+                                            <input type="number" class="form-control" id="vectorX" placeholder="x" value="1">
+                                        </div>
+                                        <div class="col">
+                                            <input type="number" class="form-control" id="vectorY" placeholder="y" value="1">
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                            <!-- 3D向量输入 (默认隐藏) -->
-                            <div id="vector3DInput" style="display: none;">
-                                <div class="row g-2 mb-2">
-                                    <div class="col">
-                                        <input type="number" class="form-control" id="vectorX3D" placeholder="x" value="1">
+                                <!-- 3D向量输入 (默认隐藏) -->
+                                <div id="vector3DInput" style="display: none;">
+                                    <div class="row g-2 mb-2">
+                                        <div class="col">
+                                            <input type="number" class="form-control" id="vectorX3D" placeholder="x" value="1">
+                                        </div>
+                                        <div class="col">
+                                            <input type="number" class="form-control" id="vectorY3D" placeholder="y" value="1">
+                                        </div>
+                                        <div class="col">
+                                            <input type="number" class="form-control" id="vectorZ3D" placeholder="z" value="1">
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- 向量颜色选择 -->
+                                <div class="row g-2 mb-2 align-items-center">
+                                    <div class="col-auto">
+                                        <label class="form-label mb-0">颜色 (可选)</label>
                                     </div>
                                     <div class="col">
-                                        <input type="number" class="form-control" id="vectorY3D" placeholder="y" value="1">
+                                        <input type="color" class="form-control form-control-color" id="vectorColor" value="#ff0000">
                                     </div>
                                     <div class="col">
-                                        <input type="number" class="form-control" id="vectorZ3D" placeholder="z" value="1">
+                                        <input type="text" class="form-control" id="vectorName" placeholder="名称 (可选)" value="">
                                     </div>
                                 </div>
                             </div>
                             
-                            <!-- 向量颜色选择 -->
-                            <div class="row g-2 mb-2 align-items-center">
-                                <div class="col-auto">
-                                    <label class="form-label mb-0">颜色 (可选)</label>
-                                </div>
-                                <div class="col">
-                                    <input type="color" class="form-control form-control-color" id="vectorColor" value="#ff0000">
-                                </div>
-                                <div class="col">
-                                    <input type="text" class="form-control" id="vectorName" placeholder="名称 (可选)" value="">
-                                </div>
+                            <button class="btn btn-primary w-100 mb-2" id="addVectorBtn">
+                                <i class="bi bi-plus-circle"></i> 添加向量
+                            </button>
+                            
+                            <!-- 向量列表 -->
+                            <div id="vectorList" class="vector-list mt-3">
+                                <!-- 向量将动态添加到这里 -->
                             </div>
-                        </div>
-                        
-                        <button class="btn btn-primary w-100 mb-2" id="addVectorBtn">
-                            <i class="bi bi-plus-circle"></i> 添加向量
-                        </button>
-                        
-                        <!-- 向量列表 -->
-                        <div id="vectorList" class="vector-list mt-3">
-                            <!-- 向量将动态添加到这里 -->
-                        </div>
-                        
-                        <button class="btn btn-outline-danger w-100 mt-2" id="clearVectorsBtn">
-                            <i class="bi bi-trash"></i> 清除所有向量
-                        </button>
+                            
+                            <button class="btn btn-outline-danger w-100 mt-2" id="clearVectorsBtn">
+                                <i class="bi bi-trash"></i> 清除所有向量
+                            </button>
                         </div>
                     </div>
                     
