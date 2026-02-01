@@ -277,6 +277,13 @@ const App = {
                 });
             }
         });
+        
+        // 全局输入框聚焦全选事件（使用事件委托）
+        document.addEventListener('focus', (e) => {
+            if (e.target.matches('input[type="number"], input[type="text"]')) {
+                e.target.select();
+            }
+        }, true);
 
         // ============================================
         // 矩阵管理
@@ -1141,7 +1148,7 @@ const App = {
         const operation = document.getElementById('operationSelect').value;
         const paramsContainer = document.getElementById('operationParams');
         
-        // 保存当前选择状态
+        // 保存当前选择状态和输入值
         const savedSelections = {
             paramMatrix1: document.getElementById('paramMatrix1')?.value,
             paramVector1: document.getElementById('paramVector1')?.value,
@@ -1150,13 +1157,47 @@ const App = {
             paramVectorOrShape1: document.getElementById('paramVectorOrShape1')?.value
         };
         
-        paramsContainer.innerHTML = Operations.generateParamsUI(operation, AppState.mode);
-        
-        // 触发 MathJax 渲染参数UI中的数学公式
-        if (window.MathJax) {
-            MathJax.typesetPromise([paramsContainer]).catch(err => console.log('MathJax error:', err));
+        // 保存二次型矩阵输入状态
+        const savedQuadraticState = {};
+        if (operation === 'matrix_quadratic_form') {
+            // 保存当前模式
+            savedQuadraticState.mode = AppState.mode;
+            
+            // 保存维度选择（3D模式）
+            const dim2Radio = document.getElementById('quadMatrixDim2');
+            const dim3Radio = document.getElementById('quadMatrixDim3');
+            if (dim2Radio && dim3Radio) {
+                savedQuadraticState.dimension = dim2Radio.checked ? 2 : 3;
+            } else {
+                // 2D模式，固定为2阶矩阵
+                savedQuadraticState.dimension = 2;
+            }
+            
+            // 保存下拉列表选择
+            savedQuadraticState.select2x2 = document.getElementById('quadMatrixSelect2x2')?.value;
+            savedQuadraticState.select3x3 = document.getElementById('quadMatrixSelect3x3')?.value;
+            
+            // 保存2x2矩阵输入值
+            savedQuadraticState.qm00 = document.getElementById('qm00')?.value;
+            savedQuadraticState.qm01 = document.getElementById('qm01')?.value;
+            savedQuadraticState.qm10 = document.getElementById('qm10')?.value;
+            savedQuadraticState.qm11 = document.getElementById('qm11')?.value;
+            
+            // 保存3x3矩阵输入值
+            savedQuadraticState.qm3d00 = document.getElementById('qm3d00')?.value;
+            savedQuadraticState.qm3d01 = document.getElementById('qm3d01')?.value;
+            savedQuadraticState.qm3d02 = document.getElementById('qm3d02')?.value;
+            savedQuadraticState.qm3d10 = document.getElementById('qm3d10')?.value;
+            savedQuadraticState.qm3d11 = document.getElementById('qm3d11')?.value;
+            savedQuadraticState.qm3d12 = document.getElementById('qm3d12')?.value;
+            savedQuadraticState.qm3d20 = document.getElementById('qm3d20')?.value;
+            savedQuadraticState.qm3d21 = document.getElementById('qm3d21')?.value;
+            savedQuadraticState.qm3d22 = document.getElementById('qm3d22')?.value;
         }
         
+        paramsContainer.innerHTML = Operations.generateParamsUI(operation, AppState.mode);
+        
+        // 立即恢复状态（在 MathJax 渲染前），避免闪烁
         // 恢复选择状态（如果选项仍然存在）
         Object.entries(savedSelections).forEach(([id, value]) => {
             if (value) {
@@ -1169,6 +1210,49 @@ const App = {
                 }
             }
         });
+        
+        // 恢复二次型矩阵输入状态
+        if (operation === 'matrix_quadratic_form' && Object.keys(savedQuadraticState).length > 0) {
+            // 恢复维度选择（3D模式）
+            if (savedQuadraticState.mode === '3D' && savedQuadraticState.dimension === 3) {
+                const dim3Radio = document.getElementById('quadMatrixDim3');
+                if (dim3Radio) {
+                    dim3Radio.checked = true;
+                    Operations.onQuadraticDimChange();
+                }
+            }
+            
+            // 恢复下拉列表选择
+            if (savedQuadraticState.select2x2) {
+                const select = document.getElementById('quadMatrixSelect2x2');
+                if (select) select.value = savedQuadraticState.select2x2;
+            }
+            if (savedQuadraticState.select3x3) {
+                const select = document.getElementById('quadMatrixSelect3x3');
+                if (select) select.value = savedQuadraticState.select3x3;
+            }
+            
+            // 恢复2x2矩阵输入值
+            ['qm00', 'qm01', 'qm10', 'qm11'].forEach(id => {
+                if (savedQuadraticState[id]) {
+                    const input = document.getElementById(id);
+                    if (input) input.value = savedQuadraticState[id];
+                }
+            });
+            
+            // 恢复3x3矩阵输入值
+            ['qm3d00', 'qm3d01', 'qm3d02', 'qm3d10', 'qm3d11', 'qm3d12', 'qm3d20', 'qm3d21', 'qm3d22'].forEach(id => {
+                if (savedQuadraticState[id]) {
+                    const input = document.getElementById(id);
+                    if (input) input.value = savedQuadraticState[id];
+                }
+            });
+        }
+        
+        // 触发 MathJax 渲染参数UI中的数学公式
+        if (window.MathJax) {
+            MathJax.typesetPromise([paramsContainer]).catch(err => console.log('MathJax error:', err));
+        }
         
         // 隐藏结果区域
         document.getElementById('operationResult').style.display = 'none';
@@ -1214,8 +1298,8 @@ const App = {
      */
     rebuildShapeList(container, shapes, addedId) {
         container.innerHTML = shapes.map(s => {
-            // 只有3D预置图形（有shapeType且不是plane类型）才显示编辑按钮
-            const canEdit = s.is3D && s.shapeType && s.shapeType !== 'plane' && s.params;
+            // 只有3D预置图形才显示编辑按钮（通过检查是否在预置图形列表中）
+            const canEdit = s.is3D && s.shapeType && s.params && ShapeManager.getPresetByType(s.shapeType);
             return `
             <div class="shape-item${addedId === s.id ? ' adding' : ''}" data-id="${s.id}">
                 <div class="shape-info">

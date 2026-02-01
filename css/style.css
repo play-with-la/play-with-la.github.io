@@ -1128,3 +1128,29 @@ input[type="number"] {
         width: 100%;
     }
 }
+
+/* ============================================
+   二次型矩阵维度选择按钮组样式
+   ============================================ */
+/* 左侧按钮：左上和左下有圆角，右侧无圆角 */
+#quadMatrixDim2 + label {
+    border-radius: 0.25rem 0 0 0.25rem !important;
+    transition: none !important;
+}
+
+/* 右侧按钮：右上和右下有圆角，左侧无圆角 */
+#quadMatrixDim3 + label {
+    border-radius: 0 0.25rem 0.25rem 0 !important;
+    transition: none !important;
+}
+
+/* 移除悬停和激活状态的动画 */
+#quadMatrixDim2 + label:hover,
+#quadMatrixDim3 + label:hover,
+#quadMatrixDim2:checked + label,
+#quadMatrixDim3:checked + label,
+#quadMatrixDim2:checked + label:hover,
+#quadMatrixDim3:checked + label:hover {
+    transition: none !important;
+    transform: none !important;
+}

@@ -77,8 +77,18 @@ const Operations = {
             needsOneMatrix: true,
             needsOptionalVector: true,  // 可选的特解向量
             modes: ['2D', '3D']
+        },
+        matrix_quadratic_form: {
+            title: '二次型',
+            description: '2D: 显示二次曲线 Q(x₁,x₂)=z | 3D: 显示二次曲面',
+            // 使用专用UI，不需要通用的矩阵选择
+            needsZParam: true,  // 需要z参数（2D模式和3D模式3阶矩阵时）
+            modes: ['2D', '3D']
         }
     },
+
+    // 二次型图案命名计数器（按矩阵名分组）
+    quadraticCounters: {},
 
     /**
      * 获取操作参数配置
@@ -121,9 +131,14 @@ const Operations = {
         });
         let html = `<small class="text-muted">${config.description}</small>`;
 
-        // 需要选择矩阵的操作（先显示矩阵选择）
-        if (config.needsOneMatrix) {
+        // 二次型操作使用专门的矩阵输入UI
+        if (operation === 'matrix_quadratic_form') {
+            html += this.generateQuadraticMatrixUI(mode);
+        }
+        // 其他需要选择矩阵的操作（先显示矩阵选择）
+        else if (config.needsOneMatrix) {
             const matrices = MatrixManager.getAllMatrices(mode);
+            
             if (matrices.length === 0) {
                 html += `<div class="alert alert-warning mt-2 py-2">请先添加矩阵</div>`;
             } else {
@@ -299,6 +314,21 @@ const Operations = {
             `;
         }
 
+        // z参数（用于二次型）
+        if (config.needsZParam) {
+            // 2D模式始终需要z参数
+            // 3D模式：2阶矩阵不需要，3阶矩阵需要
+            // 初始状态：2D模式显示，3D模式隐藏（等用户选择矩阵后再根据维度显示）
+            const initialDisplay = mode === '2D' ? 'block' : 'none';
+            html += `
+                <div class="mt-2" id="zParamContainer" style="display: ${initialDisplay};">
+                    <label class="form-label">$z$ 参数（$Q(\\mathbf{x}) = z$ 中的 $z$ 值）</label>
+                    <input type="number" class="form-control form-control-sm" 
+                           id="paramZValue" value="6" step="0.1">
+                </div>
+            `;
+        }
+
         // 额外参数
         if (config.extraParams) {
             config.extraParams.forEach(param => {
@@ -364,6 +394,8 @@ const Operations = {
                     return this.executeMatrixDynamicsTrace();
                 case 'matrix_linear_system':
                     return this.executeLinearSystemSolution();
+                case 'matrix_quadratic_form':
+                    return this.executeQuadraticForm();
                 default:
                     return { success: false, message: '未知操作' };
             }
@@ -1136,6 +1168,800 @@ const Operations = {
         }
         
         resultDiv.style.display = 'block';
+    },
+
+    // ============================================
+    // 二次型相关函数
+    // ============================================
+
+    /**
+     * 获取下一个二次型图案名称
+     * @param {string} matrixName - 矩阵名称
+     * @returns {string} 图案名称，如 "A+quad1"
+     */
+    getNextQuadraticName(matrixName) {
+        // 如果没有矩阵名（手动输入的情况），使用 'manual' 作为key
+        const key = matrixName || '_manual_';
+        if (!this.quadraticCounters[key]) {
+            this.quadraticCounters[key] = 0;
+        }
+        this.quadraticCounters[key]++;
+        
+        // 有矩阵名时用 "矩阵名+quad序号" 格式，无矩阵名时只用 "quad序号"
+        if (matrixName) {
+            return `${matrixName}+quad${this.quadraticCounters[key]}`;
+        } else {
+            return `quad${this.quadraticCounters[key]}`;
+        }
+    },
+
+    /**
+     * 生成二次型矩阵输入UI（类似矩阵管理卡片的交互方式）
+     * @param {string} mode - 当前模式 ('2D' 或 '3D')
+     * @returns {string} HTML字符串
+     */
+    generateQuadraticMatrixUI(mode) {
+        let html = '';
+        
+        // 3D模式下添加维度切换按钮
+        if (mode === '3D') {
+            html += `
+                <div class="mt-2 mb-2">
+                    <label class="form-label mb-1"><small>矩阵维度:</small></label>
+                    <div class="btn-group w-100" role="group">
+                        <input type="radio" class="btn-check" name="quadMatrixDim" id="quadMatrixDim2" value="2" checked onchange="Operations.onQuadraticDimChange()">
+                        <label class="btn btn-outline-primary btn-sm" for="quadMatrixDim2">2×2 矩阵</label>
+                        <input type="radio" class="btn-check" name="quadMatrixDim" id="quadMatrixDim3" value="3" onchange="Operations.onQuadraticDimChange()">
+                        <label class="btn btn-outline-primary btn-sm" for="quadMatrixDim3">3×3 矩阵</label>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // 2x2矩阵的下拉列表和输入区域
+        html += `
+            <div id="quadMatrix2x2Container" style="display: block;">
+                <div class="mb-2">
+                    <label class="form-label mb-1"><small>选择矩阵 (可选):</small></label>
+                    <select class="form-select form-select-sm" id="quadMatrixSelect2x2" onchange="Operations.onQuadraticMatrixSelect(2)">
+                        <option value="">-- 选择2×2矩阵 --</option>
+                    </select>
+                </div>
+                <label class="form-label mb-1"><small>矩阵输入:</small></label>
+                <div class="matrix-container mb-2">
+                    <div class="matrix-bracket left"></div>
+                    <div class="matrix-grid-2x2">
+                        <input type="number" class="form-control matrix-cell" id="qm00" value="1" step="0.1">
+                        <input type="number" class="form-control matrix-cell" id="qm01" value="0" step="0.1">
+                        <input type="number" class="form-control matrix-cell" id="qm10" value="0" step="0.1">
+                        <input type="number" class="form-control matrix-cell" id="qm11" value="1" step="0.1">
+                    </div>
+                    <div class="matrix-bracket right"></div>
+                </div>
+            </div>
+        `;
+        
+        // 3x3矩阵的下拉列表和输入区域（仅3D模式）
+        if (mode === '3D') {
+            html += `
+                <div id="quadMatrix3x3Container" style="display: none;">
+                    <div class="mb-2">
+                        <label class="form-label mb-1"><small>选择矩阵 (可选):</small></label>
+                        <select class="form-select form-select-sm" id="quadMatrixSelect3x3" onchange="Operations.onQuadraticMatrixSelect(3)">
+                            <option value="">-- 选择3×3矩阵 --</option>
+                        </select>
+                    </div>
+                    <label class="form-label mb-1"><small>矩阵输入:</small></label>
+                    <div class="matrix-container mb-2">
+                        <div class="matrix-bracket left"></div>
+                        <div class="matrix-grid-3x3">
+                            <input type="number" class="form-control matrix-cell" id="qm3d00" value="1" step="0.1">
+                            <input type="number" class="form-control matrix-cell" id="qm3d01" value="0" step="0.1">
+                            <input type="number" class="form-control matrix-cell" id="qm3d02" value="0" step="0.1">
+                            <input type="number" class="form-control matrix-cell" id="qm3d10" value="0" step="0.1">
+                            <input type="number" class="form-control matrix-cell" id="qm3d11" value="1" step="0.1">
+                            <input type="number" class="form-control matrix-cell" id="qm3d12" value="0" step="0.1">
+                            <input type="number" class="form-control matrix-cell" id="qm3d20" value="0" step="0.1">
+                            <input type="number" class="form-control matrix-cell" id="qm3d21" value="0" step="0.1">
+                            <input type="number" class="form-control matrix-cell" id="qm3d22" value="1" step="0.1">
+                        </div>
+                        <div class="matrix-bracket right"></div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // 初始化下拉列表选项
+        setTimeout(() => Operations.updateQuadraticMatrixSelects(mode), 0);
+        
+        return html;
+    },
+
+    /**
+     * 更新二次型矩阵下拉列表
+     * @param {string} mode - 当前模式 ('2D' 或 '3D')
+     */
+    updateQuadraticMatrixSelects(mode) {
+        // 更新2x2矩阵下拉列表
+        const select2x2 = document.getElementById('quadMatrixSelect2x2');
+        if (select2x2) {
+            const matrices2x2 = MatrixManager.matrices.filter(m => m.matrix.length === 2);
+            const options2x2 = matrices2x2.map(m => 
+                `<option value="${m.id}">${m.name} (2×2)</option>`
+            ).join('');
+            select2x2.innerHTML = `<option value="">-- 选择2×2矩阵 --</option>${options2x2}`;
+        }
+        
+        // 3D模式下更新3x3矩阵下拉列表
+        if (mode === '3D') {
+            const select3x3 = document.getElementById('quadMatrixSelect3x3');
+            if (select3x3) {
+                const matrices3x3 = MatrixManager.matrices.filter(m => m.matrix.length === 3);
+                const options3x3 = matrices3x3.map(m => 
+                    `<option value="${m.id}">${m.name} (3×3)</option>`
+                ).join('');
+                select3x3.innerHTML = `<option value="">-- 选择3×3矩阵 --</option>${options3x3}`;
+            }
+        }
+    },
+
+    /**
+     * 二次型矩阵下拉列表选择处理
+     * @param {number} dim - 矩阵维度 (2 或 3)
+     */
+    onQuadraticMatrixSelect(dim) {
+        const selectId = dim === 2 ? 'quadMatrixSelect2x2' : 'quadMatrixSelect3x3';
+        const select = document.getElementById(selectId);
+        if (!select || !select.value) return;
+        
+        const matrixId = parseInt(select.value);
+        const matrix = MatrixManager.getMatrix(matrixId);
+        if (!matrix) return;
+        
+        // 填充到输入区域
+        const A = matrix.matrix;
+        if (dim === 2) {
+            document.getElementById('qm00').value = A[0][0];
+            document.getElementById('qm01').value = A[0][1];
+            document.getElementById('qm10').value = A[1][0];
+            document.getElementById('qm11').value = A[1][1];
+        } else {
+            document.getElementById('qm3d00').value = A[0][0];
+            document.getElementById('qm3d01').value = A[0][1];
+            document.getElementById('qm3d02').value = A[0][2];
+            document.getElementById('qm3d10').value = A[1][0];
+            document.getElementById('qm3d11').value = A[1][1];
+            document.getElementById('qm3d12').value = A[1][2];
+            document.getElementById('qm3d20').value = A[2][0];
+            document.getElementById('qm3d21').value = A[2][1];
+            document.getElementById('qm3d22').value = A[2][2];
+        }
+    },
+
+    /**
+     * 二次型矩阵维度切换处理（3D模式）
+     */
+    onQuadraticDimChange() {
+        const dim2Radio = document.getElementById('quadMatrixDim2');
+        const dim3Radio = document.getElementById('quadMatrixDim3');
+        
+        const container2x2 = document.getElementById('quadMatrix2x2Container');
+        const container3x3 = document.getElementById('quadMatrix3x3Container');
+        const zContainer = document.getElementById('zParamContainer');
+        
+        if (dim2Radio && dim2Radio.checked) {
+            if (container2x2) container2x2.style.display = 'block';
+            if (container3x3) container3x3.style.display = 'none';
+            // 2阶矩阵在3D模式下不需要z参数（绘制 z = Q(x1,x2)）
+            if (zContainer) zContainer.style.display = 'none';
+        } else if (dim3Radio && dim3Radio.checked) {
+            if (container2x2) container2x2.style.display = 'none';
+            if (container3x3) container3x3.style.display = 'block';
+            // 3阶矩阵在3D模式下需要z参数（绘制 Q(x1,x2,x3) = z）
+            if (zContainer) zContainer.style.display = 'block';
+        }
+    },
+
+    /**
+     * 获取二次型矩阵（从输入区域读取）
+     * @returns {object|null} { matrix: number[][], name: string|null }
+     */
+    getQuadraticMatrix() {
+        // 判断当前显示的是2x2还是3x3
+        const container2x2 = document.getElementById('quadMatrix2x2Container');
+        const container3x3 = document.getElementById('quadMatrix3x3Container');
+        
+        const is2x2 = container2x2 && container2x2.style.display !== 'none';
+        
+        if (is2x2) {
+            // 读取2x2矩阵
+            const m00 = parseFloat(document.getElementById('qm00')?.value);
+            const m01 = parseFloat(document.getElementById('qm01')?.value);
+            const m10 = parseFloat(document.getElementById('qm10')?.value);
+            const m11 = parseFloat(document.getElementById('qm11')?.value);
+            
+            if (isNaN(m00) || isNaN(m01) || isNaN(m10) || isNaN(m11)) {
+                return null;
+            }
+            
+            const matrix = [[m00, m01], [m10, m11]];
+            
+            // 检查是否匹配某个已有矩阵
+            const matchedMatrix = this.findMatchingMatrix(matrix);
+            return { matrix: matrix, name: matchedMatrix ? matchedMatrix.name : null };
+        } else {
+            // 读取3x3矩阵
+            const m00 = parseFloat(document.getElementById('qm3d00')?.value);
+            const m01 = parseFloat(document.getElementById('qm3d01')?.value);
+            const m02 = parseFloat(document.getElementById('qm3d02')?.value);
+            const m10 = parseFloat(document.getElementById('qm3d10')?.value);
+            const m11 = parseFloat(document.getElementById('qm3d11')?.value);
+            const m12 = parseFloat(document.getElementById('qm3d12')?.value);
+            const m20 = parseFloat(document.getElementById('qm3d20')?.value);
+            const m21 = parseFloat(document.getElementById('qm3d21')?.value);
+            const m22 = parseFloat(document.getElementById('qm3d22')?.value);
+            
+            if (isNaN(m00) || isNaN(m01) || isNaN(m02) || 
+                isNaN(m10) || isNaN(m11) || isNaN(m12) || 
+                isNaN(m20) || isNaN(m21) || isNaN(m22)) {
+                return null;
+            }
+            
+            const matrix = [[m00, m01, m02], [m10, m11, m12], [m20, m21, m22]];
+            
+            // 检查是否匹配某个已有矩阵
+            const matchedMatrix = this.findMatchingMatrix(matrix);
+            return { matrix: matrix, name: matchedMatrix ? matchedMatrix.name : null };
+        }
+    },
+
+    /**
+     * 查找与给定矩阵匹配的已有矩阵
+     * @param {number[][]} matrix - 要查找的矩阵
+     * @returns {object|null} 匹配的矩阵对象或null
+     */
+    findMatchingMatrix(matrix) {
+        const n = matrix.length;
+        for (const m of MatrixManager.matrices) {
+            if (m.matrix.length !== n) continue;
+            
+            let match = true;
+            for (let i = 0; i < n; i++) {
+                for (let j = 0; j < n; j++) {
+                    if (Math.abs(m.matrix[i][j] - matrix[i][j]) > 1e-10) {
+                        match = false;
+                        break;
+                    }
+                }
+                if (!match) break;
+            }
+            
+            if (match) return m;
+        }
+        return null;
+    },
+
+    /**
+     * 对称化矩阵: A' = (A + A^T) / 2
+     * @param {number[][]} matrix - 输入矩阵
+     * @returns {number[][]} 对称化后的矩阵
+     */
+    symmetrizeMatrix(matrix) {
+        const n = matrix.length;
+        const result = [];
+        for (let i = 0; i < n; i++) {
+            result[i] = [];
+            for (let j = 0; j < n; j++) {
+                result[i][j] = (matrix[i][j] + matrix[j][i]) / 2;
+            }
+        }
+        return result;
+    },
+
+    /**
+     * 计算二次型值 Q(x) = x^T * A * x
+     * @param {number[][]} A - 对称矩阵
+     * @param {number[]} x - 向量
+     * @returns {number} 二次型值
+     */
+    computeQuadraticForm(A, x) {
+        const n = A.length;
+        let result = 0;
+        for (let i = 0; i < n; i++) {
+            for (let j = 0; j < n; j++) {
+                result += A[i][j] * x[i] * x[j];
+            }
+        }
+        return result;
+    },
+
+    /**
+     * 执行二次型功能演示
+     * 2D模式：绘制二次曲线 Q(x1,x2) = z
+     * 3D模式：
+     *   - 2阶矩阵：绘制曲面 z = Q(x1,x2)
+     *   - 3阶矩阵：绘制曲面 Q(x1,x2,x3) = z
+     */
+    executeQuadraticForm() {
+        const matrixData = this.getQuadraticMatrix();
+        if (!matrixData) return { success: false, message: '请选择或输入二次型矩阵' };
+
+        const A = matrixData.matrix;
+        const matrixName = matrixData.name; // 可能为 null（手动输入时）
+        const n = A.length;
+
+        // 对称化矩阵
+        const symA = this.symmetrizeMatrix(A);
+
+        // 获取 z 参数
+        const zInput = document.getElementById('paramZValue');
+        const z = zInput ? parseFloat(zInput.value) : 6;
+
+        // 固定采样密度
+        const numSamples = 60;
+
+        if (this.currentMode === '2D') {
+            // 2D模式：必须是2阶矩阵
+            if (n !== 2) {
+                return { success: false, message: '2D模式下请选择2×2矩阵' };
+            }
+            return this.executeQuadraticForm2D(symA, z, matrixName, numSamples);
+        } else {
+            // 3D模式
+            if (n === 2) {
+                // 2阶矩阵：绘制 z = Q(x1,x2) 曲面
+                return this.executeQuadraticForm3D_2x2(symA, matrixName, numSamples);
+            } else if (n === 3) {
+                // 3阶矩阵：绘制 Q(x1,x2,x3) = z 曲面
+                return this.executeQuadraticForm3D_3x3(symA, z, matrixName, numSamples);
+            } else {
+                return { success: false, message: '3D模式下请选择2×2或3×3矩阵' };
+            }
+        }
+    },
+
+    /**
+     * 2D模式：绘制二次曲线 Q(x1,x2) = z
+     * 二次曲线方程：a11*x1^2 + 2*a12*x1*x2 + a22*x2^2 = z
+     * @param {number[][]} A - 2x2对称矩阵
+     * @param {number} z - 函数值
+     * @param {string} matrixName - 矩阵名称
+     */
+    executeQuadraticForm2D(A, z, matrixName, numSamples) {
+        const a11 = A[0][0], a12 = A[0][1], a22 = A[1][1];
+        
+        // 计算判别式来确定曲线类型
+        const det = a11 * a22 - a12 * a12; // 矩阵行列式
+        
+        const range = VisualizationConfig.coordRange;
+        // 2D曲线需要更多采样点以保持平滑
+        const samples = numSamples * 3;
+        const points = [];
+        
+        // 根据不同情况采样
+        if (Math.abs(a22) > 1e-10) {
+            // a22 != 0: 可以用x1参数化，解关于x2的二次方程
+            // a22*x2^2 + 2*a12*x1*x2 + (a11*x1^2 - z) = 0
+            for (let i = 0; i <= samples; i++) {
+                const x1 = -range + (2 * range * i) / samples;
+                const solutions = this.solveQuadratic2D_x2(a11, a12, a22, z, x1);
+                solutions.forEach(x2 => {
+                    if (Math.abs(x2) <= range * 1.5) {
+                        points.push([x1, x2]);
+                    }
+                });
+            }
+        } else if (Math.abs(a11) > 1e-10) {
+            // a22 = 0, a11 != 0: 用x2参数化
+            // a11*x1^2 + 2*a12*x1*x2 = z
+            // 解关于x1的方程
+            for (let i = 0; i <= samples; i++) {
+                const x2 = -range + (2 * range * i) / samples;
+                const solutions = this.solveQuadratic2D_x1(a11, a12, z, x2);
+                solutions.forEach(x1 => {
+                    if (Math.abs(x1) <= range * 1.5) {
+                        points.push([x1, x2]);
+                    }
+                });
+            }
+        } else if (Math.abs(a12) > 1e-10) {
+            // a11 = a22 = 0, a12 != 0: 双曲线 2*a12*x1*x2 = z
+            // x2 = z / (2*a12*x1)
+            if (Math.abs(z) < 1e-10) {
+                // z = 0: 两条直线 x1 = 0 或 x2 = 0
+                for (let i = 0; i <= samples; i++) {
+                    const t = -range + (2 * range * i) / samples;
+                    points.push([t, 0]);
+                    points.push([0, t]);
+                }
+            } else {
+                for (let i = 0; i <= samples; i++) {
+                    const x1 = -range + (2 * range * i) / samples;
+                    if (Math.abs(x1) > 1e-10) {
+                        const x2 = z / (2 * a12 * x1);
+                        if (Math.abs(x2) <= range * 1.5) {
+                            points.push([x1, x2]);
+                        }
+                    }
+                }
+            }
+        } else {
+            // 零矩阵
+            if (Math.abs(z) < 1e-10) {
+                return { success: false, message: '零矩阵且z=0，解集为整个平面' };
+            } else {
+                return { success: false, message: '零矩阵且z≠0，解集为空集' };
+            }
+        }
+
+        if (points.length === 0) {
+            return { success: false, message: '该二次曲线在可见范围内无实数解（空集）' };
+        }
+
+        // 对点进行排序以便正确绘制
+        const sortedPoints = this.sortCurvePoints(points);
+
+        // 创建图案
+        const shapeName = this.getNextQuadraticName(matrixName);
+        const newShape = ShapeManager.addShape(sortedPoints, null, shapeName, false, 'quadratic', {
+            matrix: A, z: z
+        });
+        
+        App.updateShapeList({ addedId: newShape.id });
+        App.updateOperationParams();
+        Visualization.render();
+
+        // 格式化LaTeX
+        const latex = this.formatQuadraticFormLatex2D(a11, a12, a22, z);
+
+        return {
+            success: true,
+            message: `已生成二次曲线 ${shapeName}`,
+            result: `${points.length} 个采样点`,
+            latex: latex
+        };
+    },
+
+    /**
+     * 求解关于x2的二次方程
+     * a22*x2^2 + 2*a12*x1*x2 + (a11*x1^2 - z) = 0
+     */
+    solveQuadratic2D_x2(a11, a12, a22, z, x1) {
+        const a = a22;
+        const b = 2 * a12 * x1;
+        const c = a11 * x1 * x1 - z;
+        return this.solveQuadraticEquation(a, b, c);
+    },
+
+    /**
+     * 求解关于x1的二次方程（当a22=0时）
+     * a11*x1^2 + 2*a12*x1*x2 - z = 0
+     */
+    solveQuadratic2D_x1(a11, a12, z, x2) {
+        const a = a11;
+        const b = 2 * a12 * x2;
+        const c = -z;
+        return this.solveQuadraticEquation(a, b, c);
+    },
+
+    /**
+     * 求解一元二次方程 ax^2 + bx + c = 0
+     * @returns {number[]} 实数解数组
+     */
+    solveQuadraticEquation(a, b, c) {
+        if (Math.abs(a) < 1e-10) {
+            // 一次方程
+            if (Math.abs(b) < 1e-10) {
+                return []; // 无解或恒成立
+            }
+            return [-c / b];
+        }
+        
+        const discriminant = b * b - 4 * a * c;
+        if (discriminant < 0) {
+            return []; // 无实数解
+        } else if (discriminant < 1e-10) {
+            return [-b / (2 * a)]; // 一个重根
+        } else {
+            const sqrtD = Math.sqrt(discriminant);
+            return [
+                (-b + sqrtD) / (2 * a),
+                (-b - sqrtD) / (2 * a)
+            ];
+        }
+    },
+
+    /**
+     * 对二次曲线的点进行排序，以便正确绘制
+     * 使用角度排序或分段处理
+     */
+    sortCurvePoints(points) {
+        if (points.length < 3) return points;
+
+        // 计算质心
+        let cx = 0, cy = 0;
+        points.forEach(p => { cx += p[0]; cy += p[1]; });
+        cx /= points.length;
+        cy /= points.length;
+
+        // 按角度排序
+        const sorted = points.map(p => ({
+            point: p,
+            angle: Math.atan2(p[1] - cy, p[0] - cx)
+        }));
+        sorted.sort((a, b) => a.angle - b.angle);
+
+        // 检查是否需要分段（如双曲线有两个分支）
+        const result = [];
+        let prevAngle = sorted[0].angle;
+        let currentSegment = [sorted[0].point];
+
+        for (let i = 1; i < sorted.length; i++) {
+            const angleDiff = Math.abs(sorted[i].angle - prevAngle);
+            // 如果角度跳变太大，可能是不同分支
+            if (angleDiff > Math.PI / 2) {
+                result.push(...currentSegment);
+                currentSegment = [];
+            }
+            currentSegment.push(sorted[i].point);
+            prevAngle = sorted[i].angle;
+        }
+        result.push(...currentSegment);
+
+        return result;
+    },
+
+    /**
+     * 3D模式：2阶矩阵，绘制曲面 z = Q(x1,x2)
+     */
+    executeQuadraticForm3D_2x2(A, matrixName, numSamples) {
+        const a11 = A[0][0], a12 = A[0][1], a22 = A[1][1];
+        
+        const range = VisualizationConfig.coordRange;
+        const gridData = [];  // 完整网格数据（可能包含 null）
+        const gridWidth = numSamples + 1;
+        const gridHeight = numSamples + 1;
+
+        for (let i = 0; i <= numSamples; i++) {
+            const x1 = -range + (2 * range * i) / numSamples;
+            for (let j = 0; j <= numSamples; j++) {
+                const x2 = -range + (2 * range * j) / numSamples;
+                const zVal = a11 * x1 * x1 + 2 * a12 * x1 * x2 + a22 * x2 * x2;
+                // 增大z值范围限制，避免曲面边缘出现空洞
+                if (Math.abs(zVal) <= range * 4) {
+                    gridData.push([x1, x2, zVal]);
+                } else {
+                    gridData.push(null); // 保持网格索引对齐
+                }
+            }
+        }
+
+        // 统计有效点数
+        const validPoints = gridData.filter(p => p !== null);
+        if (validPoints.length === 0) {
+            return { success: false, message: '无法生成曲面点' };
+        }
+
+        // 创建3D图案，传递有效点和网格信息
+        const shapeName = this.getNextQuadraticName(matrixName);
+        const newShape = ShapeManager.addShape3D(validPoints, null, shapeName, false, 'quadratic_surface', {
+            matrix: A, dimension: 2, gridWidth: gridWidth, gridHeight: gridHeight, isRegularGrid: true, gridData: gridData
+        });
+        
+        App.updateShapeList({ addedId: newShape.id });
+        App.updateOperationParams();
+        Visualization.render();
+
+        const latex = `z = ${this.formatQuadraticTermsLatex(a11, a12, a22)}`;
+
+        return {
+            success: true,
+            message: `已生成二次曲面 ${shapeName}`,
+            result: `${validPoints.length} 个采样点`,
+            latex: latex
+        };
+    },
+
+    /**
+     * 3D模式：3阶矩阵，绘制曲面 Q(x1,x2,x3) = z
+     * 方程：a11*x1^2 + a22*x2^2 + a33*x3^2 + 2*a12*x1*x2 + 2*a13*x1*x3 + 2*a23*x2*x3 = z
+     * 将x1,x2作为自由变量，解关于x3的二次方程
+     */
+    executeQuadraticForm3D_3x3(A, z, matrixName, numSamples) {
+        const a11 = A[0][0], a12 = A[0][1], a13 = A[0][2];
+        const a22 = A[1][1], a23 = A[1][2];
+        const a33 = A[2][2];
+
+        const range = VisualizationConfig.coordRange;
+        const points = [];
+
+        for (let i = 0; i <= numSamples; i++) {
+            const x1 = -range + (2 * range * i) / numSamples;
+            for (let j = 0; j <= numSamples; j++) {
+                const x2 = -range + (2 * range * j) / numSamples;
+                
+                // 解关于x3的二次方程
+                // a33*x3^2 + 2*(a13*x1 + a23*x2)*x3 + (a11*x1^2 + 2*a12*x1*x2 + a22*x2^2 - z) = 0
+                const a = a33;
+                const b = 2 * (a13 * x1 + a23 * x2);
+                const c = a11 * x1 * x1 + 2 * a12 * x1 * x2 + a22 * x2 * x2 - z;
+                
+                const solutions = this.solveQuadraticEquation(a, b, c);
+                solutions.forEach(x3 => {
+                    if (Math.abs(x3) <= range * 1.5) {
+                        points.push([x1, x2, x3]);
+                    }
+                });
+            }
+        }
+
+        if (points.length === 0) {
+            return { success: false, message: '该二次曲面在可见范围内无实数解（空集）' };
+        }
+
+        // 创建3D图案
+        const shapeName = this.getNextQuadraticName(matrixName);
+        const newShape = ShapeManager.addShape3D(points, null, shapeName, false, 'quadratic_surface', {
+            matrix: A, z: z, dimension: 3
+        });
+        
+        App.updateShapeList({ addedId: newShape.id });
+        App.updateOperationParams();
+        Visualization.render();
+
+        const latex = this.formatQuadraticFormLatex3D(A, z);
+
+        return {
+            success: true,
+            message: `已生成二次曲面 ${shapeName}`,
+            result: `${points.length} 个采样点`,
+            latex: latex
+        };
+    },
+
+    /**
+     * 格式化2D二次型为LaTeX
+     */
+    formatQuadraticFormLatex2D(a11, a12, a22, z) {
+        let terms = [];
+        
+        if (Math.abs(a11) > 1e-10) {
+            if (Math.abs(a11 - 1) < 1e-10) {
+                terms.push('x_1^2');
+            } else if (Math.abs(a11 + 1) < 1e-10) {
+                terms.push('-x_1^2');
+            } else {
+                terms.push(`${this.formatNumber(a11)}x_1^2`);
+            }
+        }
+        
+        if (Math.abs(a12) > 1e-10) {
+            const coef = 2 * a12;
+            const sign = terms.length > 0 && coef > 0 ? '+' : '';
+            if (Math.abs(coef - 1) < 1e-10) {
+                terms.push(`${sign}x_1 x_2`);
+            } else if (Math.abs(coef + 1) < 1e-10) {
+                terms.push(`-x_1 x_2`);
+            } else {
+                terms.push(`${sign}${this.formatNumber(coef)}x_1 x_2`);
+            }
+        }
+        
+        if (Math.abs(a22) > 1e-10) {
+            const sign = terms.length > 0 && a22 > 0 ? '+' : '';
+            if (Math.abs(a22 - 1) < 1e-10) {
+                terms.push(`${sign}x_2^2`);
+            } else if (Math.abs(a22 + 1) < 1e-10) {
+                terms.push(`-x_2^2`);
+            } else {
+                terms.push(`${sign}${this.formatNumber(a22)}x_2^2`);
+            }
+        }
+        
+        const lhs = terms.length > 0 ? terms.join('') : '0';
+        return `${lhs} = ${this.formatNumber(z)}`;
+    },
+
+    /**
+     * 格式化二次项为LaTeX（不含等号）
+     */
+    formatQuadraticTermsLatex(a11, a12, a22) {
+        let terms = [];
+        
+        if (Math.abs(a11) > 1e-10) {
+            if (Math.abs(a11 - 1) < 1e-10) {
+                terms.push('x_1^2');
+            } else if (Math.abs(a11 + 1) < 1e-10) {
+                terms.push('-x_1^2');
+            } else {
+                terms.push(`${this.formatNumber(a11)}x_1^2`);
+            }
+        }
+        
+        if (Math.abs(a12) > 1e-10) {
+            const coef = 2 * a12;
+            const sign = terms.length > 0 && coef > 0 ? '+' : '';
+            if (Math.abs(coef - 1) < 1e-10) {
+                terms.push(`${sign}x_1 x_2`);
+            } else if (Math.abs(coef + 1) < 1e-10) {
+                terms.push(`-x_1 x_2`);
+            } else {
+                terms.push(`${sign}${this.formatNumber(coef)}x_1 x_2`);
+            }
+        }
+        
+        if (Math.abs(a22) > 1e-10) {
+            const sign = terms.length > 0 && a22 > 0 ? '+' : '';
+            if (Math.abs(a22 - 1) < 1e-10) {
+                terms.push(`${sign}x_2^2`);
+            } else if (Math.abs(a22 + 1) < 1e-10) {
+                terms.push(`-x_2^2`);
+            } else {
+                terms.push(`${sign}${this.formatNumber(a22)}x_2^2`);
+            }
+        }
+        
+        return terms.length > 0 ? terms.join('') : '0';
+    },
+
+    /**
+     * 格式化3D二次型为LaTeX
+     */
+    formatQuadraticFormLatex3D(A, z) {
+        const a11 = A[0][0], a12 = A[0][1], a13 = A[0][2];
+        const a22 = A[1][1], a23 = A[1][2];
+        const a33 = A[2][2];
+        
+        let terms = [];
+        
+        // x1^2
+        if (Math.abs(a11) > 1e-10) {
+            terms.push(this.formatCoefLatex(a11, 'x_1^2', terms.length === 0));
+        }
+        // x2^2
+        if (Math.abs(a22) > 1e-10) {
+            terms.push(this.formatCoefLatex(a22, 'x_2^2', terms.length === 0));
+        }
+        // x3^2
+        if (Math.abs(a33) > 1e-10) {
+            terms.push(this.formatCoefLatex(a33, 'x_3^2', terms.length === 0));
+        }
+        // 2*a12*x1*x2
+        if (Math.abs(a12) > 1e-10) {
+            terms.push(this.formatCoefLatex(2 * a12, 'x_1 x_2', terms.length === 0));
+        }
+        // 2*a13*x1*x3
+        if (Math.abs(a13) > 1e-10) {
+            terms.push(this.formatCoefLatex(2 * a13, 'x_1 x_3', terms.length === 0));
+        }
+        // 2*a23*x2*x3
+        if (Math.abs(a23) > 1e-10) {
+            terms.push(this.formatCoefLatex(2 * a23, 'x_2 x_3', terms.length === 0));
+        }
+        
+        const lhs = terms.length > 0 ? terms.join('') : '0';
+        return `${lhs} = ${this.formatNumber(z)}`;
+    },
+
+    /**
+     * 格式化系数和变量为LaTeX项
+     */
+    formatCoefLatex(coef, variable, isFirst) {
+        let result = '';
+        
+        if (!isFirst) {
+            result = coef >= 0 ? '+' : '';
+        }
+        
+        if (Math.abs(coef - 1) < 1e-10) {
+            result += variable;
+        } else if (Math.abs(coef + 1) < 1e-10) {
+            result += `-${variable}`;
+        } else {
+            result += `${this.formatNumber(coef)}${variable}`;
+        }
+        
+        return result;
     }
 };
 

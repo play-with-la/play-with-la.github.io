@@ -1379,6 +1379,12 @@ const Renderer2D = {
             this.drawInfiniteLine(shape, points, isHovered);
             return;
         }
+
+        // 特殊处理：shapeType='quadratic' 的二次曲线
+        if (shape.shapeType === 'quadratic') {
+            this.drawQuadraticCurve(shape, points, isHovered);
+            return;
+        }
         
         // 转换为屏幕坐标
         const screenPoints = points.map(p => this.worldToScreen(p[0], p[1]));
@@ -1548,6 +1554,96 @@ const Renderer2D = {
             ctx.fillStyle = shape.color;
             ctx.fillText(shape.name, midX, midY - 5);
         }
+    },
+
+    /**
+     * 绘制二次曲线（shapeType='quadratic'）
+     * 使用平滑曲线连接采样点
+     * @param {object} shape - 图案对象
+     * @param {Array} points - 采样点数组
+     * @param {boolean} isHovered - 是否悬停
+     */
+    drawQuadraticCurve(shape, points, isHovered = false) {
+        const ctx = this.ctx;
+        
+        if (points.length < 2) return;
+        
+        // 转换为屏幕坐标
+        const screenPoints = points.map(p => this.worldToScreen(p[0], p[1]));
+        
+        // 将点分组（处理可能的断开区域，如双曲线的两个分支）
+        const segments = this.splitIntoSegments(screenPoints);
+        
+        // 绘制每个连续段
+        ctx.strokeStyle = shape.color;
+        ctx.lineWidth = isHovered ? 3 : 2;
+        
+        segments.forEach(segment => {
+            if (segment.length < 2) return;
+            
+            ctx.beginPath();
+            ctx.moveTo(segment[0].x, segment[0].y);
+            
+            // 使用直线连接（因为采样已经足够密集）
+            for (let i = 1; i < segment.length; i++) {
+                ctx.lineTo(segment[i].x, segment[i].y);
+            }
+            ctx.stroke();
+        });
+        
+        // 绘制名称标签
+        if (shape.name && screenPoints.length > 0) {
+            // 找到合适的标签位置（取中间的点）
+            const midIndex = Math.floor(screenPoints.length / 2);
+            const labelPoint = screenPoints[midIndex] || screenPoints[0];
+            
+            ctx.font = 'bold 12px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'bottom';
+            ctx.fillStyle = shape.color;
+            ctx.fillText(shape.name, labelPoint.x, labelPoint.y - 10);
+        }
+    },
+
+    /**
+     * 将屏幕坐标点分割成连续的段
+     * 用于处理双曲线等有断开区域的曲线
+     * @param {Array} screenPoints - 屏幕坐标点数组
+     * @returns {Array} 分段后的点数组
+     */
+    splitIntoSegments(screenPoints) {
+        if (screenPoints.length < 2) return [screenPoints];
+        
+        const segments = [];
+        let currentSegment = [screenPoints[0]];
+        
+        // 计算合理的最大距离阈值（屏幕坐标）
+        const maxGap = Math.max(this.width, this.height) * 0.3;
+        
+        for (let i = 1; i < screenPoints.length; i++) {
+            const prev = screenPoints[i - 1];
+            const curr = screenPoints[i];
+            const distance = Math.sqrt(
+                Math.pow(curr.x - prev.x, 2) + Math.pow(curr.y - prev.y, 2)
+            );
+            
+            if (distance > maxGap) {
+                // 距离太大，开始新段
+                if (currentSegment.length > 1) {
+                    segments.push(currentSegment);
+                }
+                currentSegment = [curr];
+            } else {
+                currentSegment.push(curr);
+            }
+        }
+        
+        // 添加最后一段
+        if (currentSegment.length > 1) {
+            segments.push(currentSegment);
+        }
+        
+        return segments;
     },
 
     /**

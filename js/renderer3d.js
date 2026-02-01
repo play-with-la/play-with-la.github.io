@@ -500,6 +500,12 @@ const Renderer3D = {
             );
             return;
         }
+
+        // 特殊处理：二次曲面（使用点云渲染，因为可能是非凸的）
+        if (shape.shapeType === 'quadratic_surface') {
+            this.drawQuadraticSurface(points, shape.color, shape.name, shape.params);
+            return;
+        }
         
         // 检查所有点是否共面（用于投影后的图形）
         const isCoplanar = this.checkCoplanar(points);
@@ -616,6 +622,287 @@ const Renderer3D = {
             this.scene.add(sprite);
             this.vectorObjects.push(sprite);
         }
+    },
+
+    /**
+     * 绘制二次曲面（专用于非凸曲面如双曲面、马鞍面等）
+     * 使用点云+网格线的方式渲染
+     * @param {THREE.Vector3[]} points - 有效点数组（已转换为Vector3）
+     * @param {string} color - 颜色
+     * @param {string} name - 名称
+     * @param {object} params - 附加参数（包含网格信息）
+     */
+    drawQuadraticSurface(points, color, name, params) {
+        if (!points || points.length === 0) return;
+
+        // 检查是否是规则网格（2x2矩阵情况）
+        const isRegularGrid = params && params.isRegularGrid && params.gridWidth && params.gridHeight && params.gridData;
+        
+        if (isRegularGrid) {
+            // 使用规则网格渲染（三角面片），使用 gridData
+            this.drawQuadraticSurfaceGrid(params.gridData, color, name, params.gridWidth, params.gridHeight);
+        } else {
+            // 非规则点云渲染（3x3矩阵情况），直接使用 points
+            this.drawQuadraticSurfacePointCloud(points, color, name);
+        }
+    },
+
+    /**
+     * 使用规则网格绘制二次曲面（带三角面片）
+     */
+    drawQuadraticSurfaceGrid(rawPoints, color, name, gridWidth, gridHeight) {
+        // 创建三角面片
+        const vertices = [];
+        const indices = [];
+        const validIndices = new Map(); // 原始索引 -> 顶点数组索引
+        
+        // 先收集所有有效点
+        for (let i = 0; i < rawPoints.length; i++) {
+            const p = rawPoints[i];
+            if (p !== null) {
+                validIndices.set(i, vertices.length / 3);
+                vertices.push(p[0], p[1], p[2]);
+            }
+        }
+
+        if (vertices.length === 0) return;
+
+        // 创建三角形索引（网格中相邻的点组成三角形）
+        for (let i = 0; i < gridWidth - 1; i++) {
+            for (let j = 0; j < gridHeight - 1; j++) {
+                // 网格中四个相邻点的索引
+                const idx00 = i * gridHeight + j;
+                const idx10 = (i + 1) * gridHeight + j;
+                const idx01 = i * gridHeight + (j + 1);
+                const idx11 = (i + 1) * gridHeight + (j + 1);
+                
+                // 检查四个点是否都有效
+                const v00 = validIndices.get(idx00);
+                const v10 = validIndices.get(idx10);
+                const v01 = validIndices.get(idx01);
+                const v11 = validIndices.get(idx11);
+                
+                // 创建两个三角形（如果所有点都有效）
+                if (v00 !== undefined && v10 !== undefined && v01 !== undefined) {
+                    indices.push(v00, v10, v01);
+                }
+                if (v10 !== undefined && v11 !== undefined && v01 !== undefined) {
+                    indices.push(v10, v11, v01);
+                }
+            }
+        }
+
+        // 创建几何体
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+        if (indices.length > 0) {
+            geometry.setIndex(indices);
+        }
+        geometry.computeVertexNormals();
+
+        // 创建材质（半透明双面渲染，使用平滑着色）
+        const material = new THREE.MeshPhongMaterial({
+            color: color,
+            transparent: true,
+            opacity: 0.7,
+            side: THREE.DoubleSide,
+            flatShading: false,
+            shininess: 30
+        });
+
+        const mesh = new THREE.Mesh(geometry, material);
+        this.scene.add(mesh);
+        this.vectorObjects.push(mesh);
+
+        // 添加标签
+        this.addSurfaceLabel(vertices, color, name);
+    },
+
+    /**
+     * 使用点云和三角网格绘制二次曲面（用于非规则点集，如3x3矩阵双曲面）
+     * @param {THREE.Vector3[]} points - 已转换的点数组
+     */
+    drawQuadraticSurfacePointCloud(points, color, name) {
+        if (points.length === 0) return;
+
+        // 尝试创建三角网格曲面
+        this.createTriangulatedSurface(points, color);
+
+        // 添加标签
+        const vertices = [];
+        points.forEach(p => vertices.push(p.x, p.y, p.z));
+        this.addSurfaceLabel(vertices, color, name);
+    },
+
+    /**
+     * 为3x3矩阵的二次曲面创建三角网格
+     * 将点按(x,y)位置组织成网格，然后创建三角形
+     */
+    createTriangulatedSurface(points, color) {
+        if (points.length < 4) return;
+
+        const range = VisualizationConfig.coordRange;
+        const tolerance = range * 2 / 60; // 网格间距
+        
+        // 创建二维网格索引
+        // key: "xi_yi" -> { x, y, points: [z1, z2, ...] }
+        const grid = new Map();
+        
+        points.forEach(p => {
+            const xi = Math.round(p.x / tolerance);
+            const yi = Math.round(p.y / tolerance);
+            const key = `${xi}_${yi}`;
+            
+            if (!grid.has(key)) {
+                grid.set(key, { xi, yi, x: p.x, y: p.y, zValues: [] });
+            }
+            grid.get(key).zValues.push(p.z);
+        });
+
+        // 找出网格范围
+        let minXi = Infinity, maxXi = -Infinity;
+        let minYi = Infinity, maxYi = -Infinity;
+        grid.forEach(cell => {
+            minXi = Math.min(minXi, cell.xi);
+            maxXi = Math.max(maxXi, cell.xi);
+            minYi = Math.min(minYi, cell.yi);
+            maxYi = Math.max(maxYi, cell.yi);
+        });
+
+        // 为每个z值层创建单独的曲面（处理双叶双曲面的两个分支）
+        const getGridCell = (xi, yi) => grid.get(`${xi}_${yi}`);
+        
+        // 收集所有三角形的顶点和索引
+        const vertices = [];
+        const indices = [];
+        const vertexMap = new Map(); // 用于去重
+        
+        const addVertex = (x, y, z) => {
+            const key = `${x.toFixed(4)}_${y.toFixed(4)}_${z.toFixed(4)}`;
+            if (!vertexMap.has(key)) {
+                vertexMap.set(key, vertices.length / 3);
+                vertices.push(x, y, z);
+            }
+            return vertexMap.get(key);
+        };
+
+        // 遍历网格创建三角形
+        for (let xi = minXi; xi < maxXi; xi++) {
+            for (let yi = minYi; yi < maxYi; yi++) {
+                const cell00 = getGridCell(xi, yi);
+                const cell10 = getGridCell(xi + 1, yi);
+                const cell01 = getGridCell(xi, yi + 1);
+                const cell11 = getGridCell(xi + 1, yi + 1);
+                
+                if (!cell00 || !cell10 || !cell01 || !cell11) continue;
+                
+                // 对于每个格子的每个z值组合，尝试创建三角形
+                cell00.zValues.forEach(z00 => {
+                    // 找到相邻格子中最近的z值
+                    const findClosestZ = (cell, targetZ) => {
+                        if (!cell || cell.zValues.length === 0) return null;
+                        let closest = cell.zValues[0];
+                        let minDist = Math.abs(closest - targetZ);
+                        cell.zValues.forEach(z => {
+                            const dist = Math.abs(z - targetZ);
+                            if (dist < minDist) {
+                                minDist = dist;
+                                closest = z;
+                            }
+                        });
+                        // 如果距离太大，说明不是同一个分支
+                        return minDist < range * 0.5 ? closest : null;
+                    };
+                    
+                    const z10 = findClosestZ(cell10, z00);
+                    const z01 = findClosestZ(cell01, z00);
+                    const z11 = findClosestZ(cell11, z00);
+                    
+                    if (z10 !== null && z01 !== null) {
+                        const v00 = addVertex(cell00.x, cell00.y, z00);
+                        const v10 = addVertex(cell10.x, cell10.y, z10);
+                        const v01 = addVertex(cell01.x, cell01.y, z01);
+                        indices.push(v00, v10, v01);
+                    }
+                    
+                    if (z10 !== null && z01 !== null && z11 !== null) {
+                        const v10 = addVertex(cell10.x, cell10.y, z10);
+                        const v01 = addVertex(cell01.x, cell01.y, z01);
+                        const v11 = addVertex(cell11.x, cell11.y, z11);
+                        indices.push(v10, v11, v01);
+                    }
+                });
+            }
+        }
+
+        if (vertices.length === 0 || indices.length === 0) {
+            // 回退到点云显示
+            const pointsMaterial = new THREE.PointsMaterial({ 
+                color: color, 
+                size: 0.15,
+                transparent: true,
+                opacity: 0.9
+            });
+            const pointsGeometry = new THREE.BufferGeometry().setFromPoints(points);
+            const pointsMesh = new THREE.Points(pointsGeometry, pointsMaterial);
+            this.scene.add(pointsMesh);
+            this.vectorObjects.push(pointsMesh);
+            return;
+        }
+
+        // 创建几何体
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+        geometry.setIndex(indices);
+        geometry.computeVertexNormals();
+
+        // 创建材质
+        const material = new THREE.MeshPhongMaterial({
+            color: color,
+            transparent: true,
+            opacity: 0.7,
+            side: THREE.DoubleSide,
+            flatShading: false,
+            shininess: 30
+        });
+
+        const mesh = new THREE.Mesh(geometry, material);
+        this.scene.add(mesh);
+        this.vectorObjects.push(mesh);
+    },
+
+    /**
+     * 添加曲面标签
+     */
+    addSurfaceLabel(vertices, color, name) {
+        if (!name || vertices.length === 0) return;
+
+        const numPoints = vertices.length / 3;
+        const midIndex = Math.floor(numPoints / 2);
+        const labelX = vertices[midIndex * 3];
+        const labelY = vertices[midIndex * 3 + 1];
+        const labelZ = vertices[midIndex * 3 + 2];
+
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = 128;
+        canvas.height = 64;
+        
+        ctx.fillStyle = color;
+        ctx.font = 'bold 32px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(name, 64, 32);
+        
+        const texture = new THREE.CanvasTexture(canvas);
+        const spriteMaterial = new THREE.SpriteMaterial({ map: texture });
+        const sprite = new THREE.Sprite(spriteMaterial);
+        
+        sprite.position.set(labelX * 1.1, labelY * 1.1, labelZ + 0.5);
+        sprite.scale.set(1.5, 0.75, 1);
+        
+        this.scene.add(sprite);
+        this.vectorObjects.push(sprite);
     },
 
     /**
